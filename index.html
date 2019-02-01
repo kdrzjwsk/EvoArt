@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Evolutionary Art</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"></script>
+</head>
+<body>
+
+<div class="container text-center title">
+  <h1>Evolutionary Art</h1>
+  <h4>Creating art using Genetic Algorithm</h4>
+</div>
+
+<div class="container-fluid">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div id="menu" class="btn-group">
+        <button type="button" class="btn btn-secondary active" id="starry-night">Starry Night</button>
+        <button type="button" class="btn btn-secondary" id="irises">Irises</button>
+        <button type="button" class="btn btn-secondary" id="wheat-field">Wheat Field</button>
+        <button type="button" class="btn btn-secondary" id="dish-of-apples">Dish of Apples</button>
+      </div>
+    </div>
+    <div class="row justify-content-center no-gutters">
+      <div class="col">
+        <div class="orginal">
+          <img id="artwork" src="starry-night.jpg" width="470" height="380">
+        </div>
+      </div>
+      <div class="col">
+        <div class="canvas">
+          <canvas id="replica"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col text-center">
+        <button id="evolve" class="btn btn-dark btn-lg">Evolve</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  $(document).ready(function() {
+    $(".btn-group .btn").click(function() {
+      var id = $(this).attr("id");
+      var src = id + ".jpg";
+      var img = document.getElementById("artwork");
+      $(img).attr("src", src);
+      $(".btn-group .btn").removeClass("active");
+      $(this).addClass("active");
+    });
+  });
+</script>
+</body>
+</html>

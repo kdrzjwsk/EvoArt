@@ -1,0 +1,31 @@
+html, body, header {
+  height: 100%;
+}
+
+.title {
+  padding: 20px;
+}
+
+.orginal {
+  padding: 10px;
+  float:right;
+}
+
+.canvas {
+  padding: 10px;
+  float:left;
+}
+
+#replica {
+  width: 470px;
+  height: 380px;
+  background-color: black;
+}
+
+#evolve {
+  padding: 10px 50px;
+}
+
+#menu .btn {
+  padding: 10px 20px;
+}
