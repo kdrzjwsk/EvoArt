@@ -8,12 +8,12 @@ html, body, header {
 
 .orginal {
   padding: 10px;
-  float:right;
+  float: right;
 }
 
 .canvas {
   padding: 10px;
-  float:left;
+  float: left;
 }
 
 #replica {
@@ -26,4 +26,16 @@ html, body, header {
 
 #menu .btn {
   padding: 10px 20px;
+}
+
+@media screen and (max-width: 1200px) {
+  .original {
+    float: left !important;
+  }
+  .canvas {
+    float: left !important;
+  }
+  .col {
+    width: 100%;
+  }
 }
