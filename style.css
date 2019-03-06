@@ -8,12 +8,10 @@ html, body, header {
 
 .orginal {
   padding: 10px;
-  float: right;
 }
 
 .canvas {
   padding: 10px;
-  float: left;
 }
 
 #replica {
@@ -28,12 +26,17 @@ html, body, header {
   padding: 10px 20px;
 }
 
-@media screen and (max-width: 1200px) {
-  .original {
-    float: left !important;
+@media screen and (max-width: 1280px) {
+  img {
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+
   }
-  .canvas {
-    float: left !important;
+  canvas {
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
   }
   .col {
     width: 100%;
