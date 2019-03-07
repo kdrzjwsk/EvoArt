@@ -57,6 +57,11 @@
       $(".btn-group .btn").removeClass("active");
       $(this).addClass("active");
     });
+    $("#replica").ondblclick = function(){
+      var canvas = document.getElementById("replica");
+      var ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    };
   });
 </script>
 </body>

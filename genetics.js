@@ -7,6 +7,7 @@ var artworkData;
 var pixelCount;
 var pop_size;
 var num_of_shapes;
+var generation_count = 0;
 
 function start() {
   artwork = document.getElementById("artwork");
@@ -15,14 +16,12 @@ function start() {
   artwork_canvas.width = artwork.width;
   artwork_canvas.height = artwork.height;
   artwork_ctx.drawImage(artwork, 0, 0, artwork.width, artwork.height);
-  artworkData = artwork_ctx.getImageData(0, 0, artwork_canvas.width, artwork_canvas.height);
-  pixelCount = artworkData.data.length;
+  artworkData = artwork_ctx.getImageData(0, 0, artwork_canvas.width, artwork_canvas.height).data;
+  pixelCount = artworkData.length;
   console.log(artworkData);
 
   canvas = document.getElementById("replica");
   ctx = canvas.getContext("2d");
-  //ctx.globalAlpha = 0.5;
-  //ctx.drawImage(artwork, 0, 0, artwork.width, artwork.height);
 
   minRadius = 10;
   maxRadius = 70;
@@ -30,15 +29,14 @@ function start() {
   num_of_shapes = 50;
 
   var myPopulation = new Population(pop_size);
-  myPopulation.generate();
-  myPopulation.draw_fittest();
+  myPopulation.generatePopulation();
+  myPopulation.drawFittest();
   console.log(myPopulation.individuals);
-  /*var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  console.log(imgData);
-  console.log(fitness(imgData.data, artworkData.data, pixelCount));*/
+  console.log(selection(myPopulation.individuals));
 };
 
 function randomRGBA() {
+  /* Return a random RGBA data */
   var red = Math.floor(Math.random() * 256);
   var blue = Math.floor(Math.random() * 256);
   var green = Math.floor(Math.random() * 256);
@@ -46,50 +44,60 @@ function randomRGBA() {
   return("rgba(" + red + ", " + blue + ", " + green + ", " + opacity + ")");
 };
 
-function Population (population_size) {
-  this.size = population_size;
-  this.individuals = [];
-  this.generate = generate;
-  this.draw_fittest = draw_fittest;
+function Population (population_size, new_individuals) {
+  this.size = population_size || new_individuals.length;
+  this.individuals = new_individuals || [];
+  this.generatePopulation = generatePopulation;
+  this.drawFittest = drawFittest;
+  this.getFittest = getFittest;
 };
 
-function generate() {
-  for (var i = 0; i < this.size; i++) {
-    this.individuals.push(new Individual());
-  }
+function generatePopulation() {
+  /* Initialise the population by creating a number of new random individuals */
+
+  if (this.individuals === undefined || this.individuals.length == 0) {
+    for (var i = 0; i < this.size; i++) {
+      this.individuals.push(new Individual());
+    };
+  };
 };
 
-function draw_fittest() {
+function drawFittest() {
+  /* Draw the fittest individual of the population */
+  this.getFittest().draw(ctx);
+};
+
+function getFittest() {
+  /* Return the fittest individual of the population */
   var max_fittness_score = Math.max.apply(Math, this.individuals.map(function(obj) {return obj.fitness_score;}));
   var fittest_individual = this.individuals.find(function(obj) {return obj.fitness_score == max_fittness_score;});
   console.log("Max: ", max_fittness_score);
-  fittest_individual.draw(ctx);
+  return fittest_individual;
 };
 
-function Individual (parentA, parentB) {
-  //DNA is a collection of shapes
+function Individual() {
+  /* An individual of the population is a representation of a collection of shapes
+  Its DNA stores the data about all shapes */
   this.dna = [];
   this.number_of_shapes = num_of_shapes;
   this.imgData;
   this.draw = draw;
-  this.fitness_score;
+  this.fitness_score = 0;
 
-  if (parentA && parentB) {
-    //crossover
-  } else {
-    for (var i = 0; i < this.number_of_shapes; i++) {
+
+  for (var i = 0; i < this.number_of_shapes; i++) {
       this.dna.push(new Shape());
-    }
-    var individual_canvas = document.createElement("canvas");
-    var individual_ctx = individual_canvas.getContext("2d");
-    this.draw(individual_ctx);
-    this.imgData = individual_ctx.getImageData(0, 0, canvas.width, canvas.height);
-    this.fitness_score = calculate_fitness(this.imgData);
-    console.log(this.fitness_score);
   }
+  var individual_canvas = document.createElement("canvas");
+  var individual_ctx = individual_canvas.getContext("2d");
+  this.draw(individual_ctx);
+  this.imgData = individual_ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  this.fitness_score = calculateFitness(this.imgData);
+  console.log(this.fitness_score);
 };
 
 function draw(context) {
+  /* Draw an individual using its DNA data */
   for (var i = 0; i < this.number_of_shapes; i++) {
     var data = this.dna[i].data;
     context.beginPath();
@@ -102,22 +110,50 @@ function draw(context) {
   }
 };
 
-function calculate_fitness(imgData) {
-  //calcuating fitness of an individual using Root Mean Square (RMS)
+function calculateFitness(imgData) {
+  /* Calcuate the fitness of an individual using Root Mean Square (RMS)*/
   var sum = 0.0;
   var fitness_value = 0.0;
-  if (imgData != undefined && artworkData != undefined && imgData.data.length == artworkData.data.length) {
+  if (imgData != undefined && artworkData != undefined && imgData.length == artworkData.length) {
     for (var i = 0; i < pixelCount; i++){
-        difference = imgData.data[i] - artworkData.data[i];
+        difference = imgData[i] - artworkData[i];
         sum += difference * difference;
     }
     var rms = Math.sqrt(sum/pixelCount); //RMS ranges from 0 (identical) to 255 (completely different)
     fitness_value = 1 - (rms/255);
   }
-  /*in order to later maximise the fitness,
-  the fitness of identical images will be equal to 1,
-  and completely different images - 0*/
+
   return fitness_value;
+};
+
+function selection(individuals) {
+  /* Select n (=pop_size) individuals to be parents using Roulette Wheel Selection */
+  var parents = [];
+  for (var n = 0; n < individuals.length; n++) {
+    var sum = 0;
+    for (var i = 0; i < individuals.length; i++) {
+      sum += individuals[i].fitness_score;
+    };
+    console.log(sum);
+    var random_point = Math.random()*sum; //select a random point on the "roulette wheel"
+    //locate the individual corresponding to the random_point
+    for (var i = 0; i < individuals.length; i++) {
+      random_point -= individuals[i].fitness_score;
+      if (random_point <= 0) {
+        parents.push(individuals[i]);
+        break;
+      };
+    };
+  };
+  return parents;
+};
+
+function crossover() {
+  /* Crossover the selected individuals using the crossover point */
+};
+
+function mutation() {
+  /* Mutate the offspring with some probability */
 };
 
 function Shape () {
