@@ -8,6 +8,7 @@ var pixelCount;
 var pop_size;
 var num_of_shapes;
 var generation_count = 0;
+var elitism = false;
 
 function start() {
   artwork = document.getElementById("artwork");
@@ -18,7 +19,7 @@ function start() {
   artwork_ctx.drawImage(artwork, 0, 0, artwork.width, artwork.height);
   artworkData = artwork_ctx.getImageData(0, 0, artwork_canvas.width, artwork_canvas.height).data;
   pixelCount = artworkData.length;
-  console.log(artworkData);
+  //console.log(artworkData);
 
   canvas = document.getElementById("replica");
   ctx = canvas.getContext("2d");
@@ -32,7 +33,7 @@ function start() {
   myPopulation.generatePopulation();
   myPopulation.drawFittest();
   console.log(myPopulation.individuals);
-  console.log(selection(myPopulation.individuals));
+  console.log(selection(myPopulation));
 };
 
 function randomRGBA() {
@@ -77,8 +78,8 @@ function getFittest() {
 
 function Individual() {
   /* An individual of the population is a representation of a collection of shapes
-  Its DNA stores the data about all shapes */
-  this.dna = [];
+  Its chromosome stores the data about all shapes. Each shape is a gene. */
+  this.chromosome = [];
   this.number_of_shapes = num_of_shapes;
   this.imgData;
   this.draw = draw;
@@ -86,20 +87,20 @@ function Individual() {
 
 
   for (var i = 0; i < this.number_of_shapes; i++) {
-      this.dna.push(new Shape());
+      this.chromosome.push(new Shape());
   }
   var individual_canvas = document.createElement("canvas");
   var individual_ctx = individual_canvas.getContext("2d");
   this.draw(individual_ctx);
   this.imgData = individual_ctx.getImageData(0, 0, canvas.width, canvas.height).data;
   this.fitness_score = calculateFitness(this.imgData);
-  console.log(this.fitness_score);
+  //console.log(this.fitness_score);
 };
 
 function draw(context) {
-  /* Draw an individual using its DNA data */
+  /* Draw an individual using its chromosome data */
   for (var i = 0; i < this.number_of_shapes; i++) {
-    var data = this.dna[i].data;
+    var data = this.chromosome[i].gene;
     context.beginPath();
     context.ellipse(data.x, data.y, data.radiusX, data.radiusY, data.rotation, data.startAngle, data.endAngle, data.cc);
     context.fillStyle = data.colour;
@@ -126,48 +127,80 @@ function calculateFitness(imgData) {
   return fitness_value;
 };
 
-function selection(individuals) {
-  /* Select n (=pop_size) individuals to be parents using Roulette Wheel Selection */
+function selection(population) {
+  /* Select n (=pop_size) individuals from the population to be parents using Roulette Wheel Selection */
   var parents = [];
-  for (var n = 0; n < individuals.length; n++) {
-    var sum = 0;
-    for (var i = 0; i < individuals.length; i++) {
-      sum += individuals[i].fitness_score;
+
+  //Find the total fitness of the population
+  var total_fitness = 0;
+  for (var i = 0; i < population.size; i++) {
+    total_fitness += population.individuals[i].fitness_score;
+  };
+
+  //Calculate the probability of selection for each individual from the formula prob = fitness_of_individual/total_fitness
+  var probabilities_of_selection = [];
+  for (var i = 0; i < population.size; i++) {
+    probabilities_of_selection.push(population.individuals[i].fitness_score/total_fitness);
+  };
+
+  //Calculate probability intervals for the idividuals
+  var probability_intervals = [];
+  var sum = 0;
+  for (var i = 0; i < probabilities_of_selection.length; i++) {
+    sum += probabilities_of_selection[i];
+    probability_intervals.push(sum);
+  };
+  //console.log(probability_intervals);
+
+  if (elitism) {
+  //Copy the fittest individual & select n - 1 parents for the new generation??
+    parents.push(population.getFittest());
+    for (var n = 0; n < population.size - 1; n++) {
+      var pointer = Math.random();
+      for (var i = 0; i < population.size; i++) {
+        if (pointer <= probability_intervals[i]) {
+          parents.push(population.individuals[i]);
+          break;
+        };
+      };
     };
-    console.log(sum);
-    var random_point = Math.random()*sum; //select a random point on the "roulette wheel"
-    //locate the individual corresponding to the random_point
-    for (var i = 0; i < individuals.length; i++) {
-      random_point -= individuals[i].fitness_score;
-      if (random_point <= 0) {
-        parents.push(individuals[i]);
-        break;
+  } else {
+  //Select n parents
+    for (var n = 0; n < population.size; n++) {
+      var pointer = Math.random();
+      for (var i = 0; i < population.size; i++) {
+        if (pointer <= probability_intervals[i]) {
+          parents.push(population.individuals[i]);
+          break;
+        };
       };
     };
   };
   return parents;
 };
 
-function crossover() {
+function crossover(population, parents) {
   /* Crossover the selected individuals using the crossover point */
+  //return offspring
 };
 
-function mutation() {
+function mutation(offspring) {
   /* Mutate the offspring with some probability */
+  //return new Population, generation_count++
 };
 
 function Shape () {
-  this.data = {};
+  this.gene = {};
 
-  this.data.x = Math.random()*canvas.width;
-  this.data.y = Math.random()*canvas.height;
-  this.data.radiusX = Math.random()*(maxRadius - minRadius) + minRadius;
-  this.data.radiusY = Math.random()*(maxRadius - minRadius) + minRadius;
-  this.data.startAngle = Math.random()*Math.PI; //or 0*Math.PI
-  this.data.endAngle = (Math.random()+1)*Math.PI; //or 2*Math.PI for a full circle
-  this.data.rotation = Math.random()*Math.PI;
-  this.data.cc = (Math.random() >= 0.5);
-  this.data.colour = randomRGBA();
-  this.data.strokeColour = randomRGBA();
-  this.data.width = Math.floor(Math.random()* 10);
+  this.gene.x = Math.random()*canvas.width;
+  this.gene.y = Math.random()*canvas.height;
+  this.gene.radiusX = Math.random()*(maxRadius - minRadius) + minRadius;
+  this.gene.radiusY = Math.random()*(maxRadius - minRadius) + minRadius;
+  this.gene.startAngle = Math.random()*Math.PI; //or 0*Math.PI
+  this.gene.endAngle = (Math.random()+1)*Math.PI; //or 2*Math.PI for a full circle
+  this.gene.rotation = Math.random()*Math.PI;
+  this.gene.cc = (Math.random() >= 0.5);
+  this.gene.colour = randomRGBA();
+  this.gene.strokeColour = randomRGBA();
+  this.gene.width = Math.floor(Math.random()* 10);
 };
