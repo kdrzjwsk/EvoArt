@@ -33,7 +33,23 @@ function start() {
   myPopulation.generatePopulation();
   myPopulation.drawFittest();
   console.log(myPopulation.individuals);
-  console.log(selection(myPopulation));
+  /*var parents = selection(myPopulation);
+  console.log(parents);*/
+  var RWS = new RouletteWheelSelection(myPopulation);
+  /*var parents = RWS.getParents();
+  console.log(parents);
+  console.log(crossover(parents));*/
+  var offspring = [];
+  while (offspring.length != pop_size) {
+    var children = crossover(RWS.getParents());
+    offspring.push(children[0]);
+    offspring.push(children[1]);
+  };
+  console.log(offspring);
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  var nextGeneration = new Population(pop_size, offspring);
+  console.log(nextGeneration);
+  nextGeneration.drawFittest();
 };
 
 function randomRGBA() {
@@ -46,7 +62,7 @@ function randomRGBA() {
 };
 
 function Population (population_size, new_individuals) {
-  this.size = population_size || new_individuals.length;
+  this.size = population_size;
   this.individuals = new_individuals || [];
   this.generatePopulation = generatePopulation;
   this.drawFittest = drawFittest;
@@ -76,7 +92,7 @@ function getFittest() {
   return fittest_individual;
 };
 
-function Individual() {
+function Individual(mother, father) {
   /* An individual of the population is a representation of a collection of shapes
   Its chromosome stores the data about all shapes. Each shape is a gene. */
   this.chromosome = [];
@@ -84,7 +100,6 @@ function Individual() {
   this.imgData;
   this.draw = draw;
   this.fitness_score = 0;
-
 
   for (var i = 0; i < this.number_of_shapes; i++) {
       this.chromosome.push(new Shape());
@@ -127,8 +142,45 @@ function calculateFitness(imgData) {
   return fitness_value;
 };
 
-function selection(population) {
-  /* Select n (=pop_size) individuals from the population to be parents using Roulette Wheel Selection */
+function RouletteWheelSelection(population) {
+  /* Create a roulette wheel for a population */
+  this.rouletteWheel = [];
+  this.getParents = function() {
+    var parents = [];
+    for (var n = 0; n < 2; n++) {
+      var pointer = Math.random();
+      for (var i = 0; i < population.size; i++) {
+        if (pointer <= this.rouletteWheel[i]) {
+          parents.push(population.individuals[i]);
+          break;
+        };
+      };
+    };
+    return parents;
+  };
+
+  //Find the total fitness of the population
+  var total_fitness = 0;
+  for (var i = 0; i < population.size; i++) {
+    total_fitness += population.individuals[i].fitness_score;
+  };
+
+  //Calculate the probability of selection for each individual from the formula prob = fitness_of_individual/total_fitness
+  var probabilities_of_selection = [];
+  for (var i = 0; i < population.size; i++) {
+    probabilities_of_selection.push(population.individuals[i].fitness_score/total_fitness);
+  };
+
+  //Calculate probability intervals for the idividuals
+  var sum = 0;
+  for (var i = 0; i < probabilities_of_selection.length; i++) {
+    sum += probabilities_of_selection[i];
+    this.rouletteWheel.push(sum);
+  };
+};
+
+/*function selection(population) {
+  // Select n (=pop_size) individuals from the population to be parents using Roulette Wheel Selection
   var parents = [];
 
   //Find the total fitness of the population
@@ -177,11 +229,27 @@ function selection(population) {
     };
   };
   return parents;
-};
+};*/
 
-function crossover(population, parents) {
-  /* Crossover the selected individuals using the crossover point */
-  //return offspring
+function crossover(parents) {
+  /* Crossover the selected individuals using the one point crossover*/
+  var offspring = [];
+  var crossover_point = Math.round(Math.random() * num_of_shapes);
+  console.log(crossover_point);
+  var child1 = new Individual();
+  var child2 = new Individual();
+
+  for (var i = 0; i < crossover_point; i++) {
+    child1.chromosome.push(parents[0].chromosome[i]);
+    child2.chromosome.push(parents[1].chromosome[i]);
+  };
+  for (var i = crossover_point; i < num_of_shapes; i++) {
+    child1.chromosome.push(parents[1].chromosome[i]);
+    child2.chromosome.push(parents[0].chromosome[i]);
+  }
+  offspring.push(child1);
+  offspring.push(child2);
+  return offspring;
 };
 
 function mutation(offspring) {
