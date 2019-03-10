@@ -13,7 +13,10 @@ var shapes;
 var generation_count = 0;
 var elitism = true;
 var crossover_rate = 0.5
-var mutation_chance = 0;
+var mutation_rate = 0.8;
+
+/* TESTING */
+var iPopulation;
 
 function start() {
   artwork = document.getElementById("artwork");
@@ -30,21 +33,35 @@ function start() {
   ctx = canvas.getContext("2d");
 
   minRadius = 10;
-  maxRadius = 70;
-  population_size = 50;
+  maxRadius = 90;
+  population_size = 10;
   shapes = 50;
 
-  var iPopulation = new Population(population_size);
+  iPopulation = new Population(population_size);
   iPopulation.generatePopulation();
   iPopulation.drawFittest();
-  //console.log(iPopulation);
+  console.log(iPopulation);
 
-  while(generation_count < 20) {
-    generation_count++;
-    console.log("Generation: " + generation_count + " Fittest: " + iPopulation.getFittest().fitness_score);
-    iPopulation = evolvePopulation(iPopulation);
+  window.requestAnimationFrame(simulation);
+
+  /*while(generation_count < 10) {
+    window.requestAnimationFrame(simulation);
+  };*/
+
+  /*window.addEventListener('click', function() {
+    setTimeout(simulation(iPopulation), 1000);
+  });*/
+};
+
+function simulation() {
+  generation_count++;
+  console.log("Generation: " + generation_count + " Fittest: " + iPopulation.getFittest().fitness_score);
+  iPopulation = evolvePopulation(iPopulation);
+  iPopulation.drawFittest();
+  console.log(iPopulation);
+  if (generation_count < 100) {
+    window.requestAnimationFrame(simulation);
   };
-
 };
 
 function randomRGBA() {
@@ -62,21 +79,30 @@ function evolvePopulation(population) {
 
   if (elitism) {
     new_individuals.push(population.getFittest());
-  }
+  };
 
   var elitism_offset;
   if (elitism) {
     elitism_offset = 1;
   } else {
     elitism_offset = 0;
-  }
+  };
 
+  /* Select parents and breed the new individuals of the population */
   for (var i = elitism_offset; i < population.size; i++) {
     var parents = rws.getParents();
     new_individuals.push(new Individual(parents));
-  }
+  };
+
+  /* Create a new population consisting of the new individuals */
   var newPopulation = new Population(population.size, new_individuals);
 
+  for (var i = 0; i < newPopulation.size; i++) {
+    if (Math.random() < mutation_rate) {
+      newPopulation.individuals[i].chromosome = mutation(newPopulation.individuals[i].chromosome);
+      console.log("Mutation");
+    };
+  };
   return newPopulation;
 };
 
@@ -117,6 +143,16 @@ function RouletteWheelSelection(population) {
   };
 };
 
+function mutation(chromosome) {
+  /* Mutate the chromosome with some probability */
+  var gene_position = Math.round(Math.random()*shapes);
+  //console.log(gene_position);
+  //console.log(chromosome[gene_position]);
+  chromosome[gene_position] = new Shape();
+  //console.log(chromosome[gene_position]);
+  return chromosome;
+};
+
 function Population (population_size, new_individuals) {
   this.size = population_size;
   this.individuals = new_individuals || [];
@@ -144,7 +180,7 @@ function getFittest() {
   /* Return the fittest individual of the population */
   var max_fittness_score = Math.max.apply(Math, this.individuals.map(function(obj) {return obj.fitness_score;}));
   var fittest_individual = this.individuals.find(function(obj) {return obj.fitness_score == max_fittness_score;});
-  console.log("Max: ", max_fittness_score);
+  //console.log("Max: ", max_fittness_score);
   return fittest_individual;
 };
 
@@ -180,10 +216,13 @@ function Individual(parents) {
 
 function draw(context) {
   /* Draw an individual using its chromosome data */
+  context.fillStyle = "#C7D4D8";
+  context.clearRect(0, 0, canvas.width, canvas.height);
   for (var i = 0; i < this.number_of_shapes; i++) {
     var data = this.chromosome[i].gene;
     context.beginPath();
     context.ellipse(data.x, data.y, data.radiusX, data.radiusY, data.rotation, data.startAngle, data.endAngle, data.cc);
+    context.closePath();
     context.fillStyle = data.colour;
     context.strokeStyle = data.strokeColour;
     context.lineWidth = data.width;
@@ -206,63 +245,6 @@ function calculateFitness(imgData) {
   }
 
   return fitness_value;
-};
-
-/*function selection(population) {
-  // Select n (=pop_size) individuals from the population to be parents using Roulette Wheel Selection
-  var parents = [];
-
-  //Find the total fitness of the population
-  var total_fitness = 0;
-  for (var i = 0; i < population.size; i++) {
-    total_fitness += population.individuals[i].fitness_score;
-  };
-
-  //Calculate the probability of selection for each individual from the formula prob = fitness_of_individual/total_fitness
-  var probabilities_of_selection = [];
-  for (var i = 0; i < population.size; i++) {
-    probabilities_of_selection.push(population.individuals[i].fitness_score/total_fitness);
-  };
-
-  //Calculate probability intervals for the idividuals
-  var probability_intervals = [];
-  var sum = 0;
-  for (var i = 0; i < probabilities_of_selection.length; i++) {
-    sum += probabilities_of_selection[i];
-    probability_intervals.push(sum);
-  };
-  //console.log(probability_intervals);
-
-  if (elitism) {
-  //Copy the fittest individual & select n - 1 parents for the new generation??
-    parents.push(population.getFittest());
-    for (var n = 0; n < population.size - 1; n++) {
-      var pointer = Math.random();
-      for (var i = 0; i < population.size; i++) {
-        if (pointer <= probability_intervals[i]) {
-          parents.push(population.individuals[i]);
-          break;
-        };
-      };
-    };
-  } else {
-  //Select n parents
-    for (var n = 0; n < population.size; n++) {
-      var pointer = Math.random();
-      for (var i = 0; i < population.size; i++) {
-        if (pointer <= probability_intervals[i]) {
-          parents.push(population.individuals[i]);
-          break;
-        };
-      };
-    };
-  };
-  return parents;
-};*/
-
-function mutation(offspring) {
-  /* Mutate the offspring with some probability */
-  //return new Population, generation_count++
 };
 
 function Shape () {
