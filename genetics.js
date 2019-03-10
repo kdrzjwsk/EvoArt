@@ -1,3 +1,4 @@
+/* Image and canvas parameters */
 var canvas;
 var ctx;
 var minRadius;
@@ -5,10 +6,14 @@ var maxRadius;
 var artwork;
 var artworkData;
 var pixelCount;
-var pop_size;
-var num_of_shapes;
+
+/* GA parameters */
+var population_size;
+var shapes;
 var generation_count = 0;
-var elitism = false;
+var elitism = true;
+var crossover_rate = 0.5
+var mutation_chance = 0;
 
 function start() {
   artwork = document.getElementById("artwork");
@@ -26,30 +31,20 @@ function start() {
 
   minRadius = 10;
   maxRadius = 70;
-  pop_size = 10;
-  num_of_shapes = 50;
+  population_size = 50;
+  shapes = 50;
 
-  var myPopulation = new Population(pop_size);
-  myPopulation.generatePopulation();
-  myPopulation.drawFittest();
-  console.log(myPopulation.individuals);
-  /*var parents = selection(myPopulation);
-  console.log(parents);*/
-  var RWS = new RouletteWheelSelection(myPopulation);
-  /*var parents = RWS.getParents();
-  console.log(parents);
-  console.log(crossover(parents));*/
-  var offspring = [];
-  while (offspring.length != pop_size) {
-    var children = crossover(RWS.getParents());
-    offspring.push(children[0]);
-    offspring.push(children[1]);
+  var iPopulation = new Population(population_size);
+  iPopulation.generatePopulation();
+  iPopulation.drawFittest();
+  //console.log(iPopulation);
+
+  while(generation_count < 20) {
+    generation_count++;
+    console.log("Generation: " + generation_count + " Fittest: " + iPopulation.getFittest().fitness_score);
+    iPopulation = evolvePopulation(iPopulation);
   };
-  console.log(offspring);
-  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-  var nextGeneration = new Population(pop_size, offspring);
-  console.log(nextGeneration);
-  nextGeneration.drawFittest();
+
 };
 
 function randomRGBA() {
@@ -61,85 +56,28 @@ function randomRGBA() {
   return("rgba(" + red + ", " + blue + ", " + green + ", " + opacity + ")");
 };
 
-function Population (population_size, new_individuals) {
-  this.size = population_size;
-  this.individuals = new_individuals || [];
-  this.generatePopulation = generatePopulation;
-  this.drawFittest = drawFittest;
-  this.getFittest = getFittest;
-};
+function evolvePopulation(population) {
+  var new_individuals = []
+  var rws = new RouletteWheelSelection(population);
 
-function generatePopulation() {
-  /* Initialise the population by creating a number of new random individuals */
-
-  if (this.individuals === undefined || this.individuals.length == 0) {
-    for (var i = 0; i < this.size; i++) {
-      this.individuals.push(new Individual());
-    };
-  };
-};
-
-function drawFittest() {
-  /* Draw the fittest individual of the population */
-  this.getFittest().draw(ctx);
-};
-
-function getFittest() {
-  /* Return the fittest individual of the population */
-  var max_fittness_score = Math.max.apply(Math, this.individuals.map(function(obj) {return obj.fitness_score;}));
-  var fittest_individual = this.individuals.find(function(obj) {return obj.fitness_score == max_fittness_score;});
-  console.log("Max: ", max_fittness_score);
-  return fittest_individual;
-};
-
-function Individual(mother, father) {
-  /* An individual of the population is a representation of a collection of shapes
-  Its chromosome stores the data about all shapes. Each shape is a gene. */
-  this.chromosome = [];
-  this.number_of_shapes = num_of_shapes;
-  this.imgData;
-  this.draw = draw;
-  this.fitness_score = 0;
-
-  for (var i = 0; i < this.number_of_shapes; i++) {
-      this.chromosome.push(new Shape());
-  }
-  var individual_canvas = document.createElement("canvas");
-  var individual_ctx = individual_canvas.getContext("2d");
-  this.draw(individual_ctx);
-  this.imgData = individual_ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-  this.fitness_score = calculateFitness(this.imgData);
-  //console.log(this.fitness_score);
-};
-
-function draw(context) {
-  /* Draw an individual using its chromosome data */
-  for (var i = 0; i < this.number_of_shapes; i++) {
-    var data = this.chromosome[i].gene;
-    context.beginPath();
-    context.ellipse(data.x, data.y, data.radiusX, data.radiusY, data.rotation, data.startAngle, data.endAngle, data.cc);
-    context.fillStyle = data.colour;
-    context.strokeStyle = data.strokeColour;
-    context.lineWidth = data.width;
-    context.fill();
-    context.stroke();
-  }
-};
-
-function calculateFitness(imgData) {
-  /* Calcuate the fitness of an individual using Root Mean Square (RMS)*/
-  var sum = 0.0;
-  var fitness_value = 0.0;
-  if (imgData != undefined && artworkData != undefined && imgData.length == artworkData.length) {
-    for (var i = 0; i < pixelCount; i++){
-        difference = imgData[i] - artworkData[i];
-        sum += difference * difference;
-    }
-    var rms = Math.sqrt(sum/pixelCount); //RMS ranges from 0 (identical) to 255 (completely different)
-    fitness_value = 1 - (rms/255);
+  if (elitism) {
+    new_individuals.push(population.getFittest());
   }
 
-  return fitness_value;
+  var elitism_offset;
+  if (elitism) {
+    elitism_offset = 1;
+  } else {
+    elitism_offset = 0;
+  }
+
+  for (var i = elitism_offset; i < population.size; i++) {
+    var parents = rws.getParents();
+    new_individuals.push(new Individual(parents));
+  }
+  var newPopulation = new Population(population.size, new_individuals);
+
+  return newPopulation;
 };
 
 function RouletteWheelSelection(population) {
@@ -177,6 +115,97 @@ function RouletteWheelSelection(population) {
     sum += probabilities_of_selection[i];
     this.rouletteWheel.push(sum);
   };
+};
+
+function Population (population_size, new_individuals) {
+  this.size = population_size;
+  this.individuals = new_individuals || [];
+  this.generatePopulation = generatePopulation;
+  this.drawFittest = drawFittest;
+  this.getFittest = getFittest;
+};
+
+function generatePopulation() {
+  /* Initialise the population by creating a number of new random individuals */
+
+  if (this.individuals === undefined || this.individuals.length == 0) {
+    for (var i = 0; i < this.size; i++) {
+      this.individuals.push(new Individual());
+    };
+  };
+};
+
+function drawFittest() {
+  /* Draw the fittest individual of the population */
+  this.getFittest().draw(ctx);
+};
+
+function getFittest() {
+  /* Return the fittest individual of the population */
+  var max_fittness_score = Math.max.apply(Math, this.individuals.map(function(obj) {return obj.fitness_score;}));
+  var fittest_individual = this.individuals.find(function(obj) {return obj.fitness_score == max_fittness_score;});
+  console.log("Max: ", max_fittness_score);
+  return fittest_individual;
+};
+
+function Individual(parents) {
+  /* An individual of the population is a representation of a collection of shapes
+  Its chromosome stores the data about all shapes. Each shape is a gene. */
+  this.chromosome = [];
+  this.number_of_shapes = shapes;
+  this.imgData;
+  this.draw = draw;
+  this.fitness_score = 0;
+  if (parents && parents.length == 2) {
+    // Crossover using uniform crossover method
+    for (var i = 0; i < this.number_of_shapes; i++) {
+      if (Math.random() <= crossover_rate) {
+        this.chromosome.push(parents[0].chromosome[i]);
+      } else {
+        this.chromosome.push(parents[1].chromosome[i]);
+      };
+    };
+  } else {
+    // Random generation
+    for (var i = 0; i < this.number_of_shapes; i++) {
+        this.chromosome.push(new Shape());
+    };
+  };
+  var individual_canvas = document.createElement("canvas");
+  var individual_ctx = individual_canvas.getContext("2d");
+  this.draw(individual_ctx);
+  this.imgData = individual_ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  this.fitness_score = calculateFitness(this.imgData);
+};
+
+function draw(context) {
+  /* Draw an individual using its chromosome data */
+  for (var i = 0; i < this.number_of_shapes; i++) {
+    var data = this.chromosome[i].gene;
+    context.beginPath();
+    context.ellipse(data.x, data.y, data.radiusX, data.radiusY, data.rotation, data.startAngle, data.endAngle, data.cc);
+    context.fillStyle = data.colour;
+    context.strokeStyle = data.strokeColour;
+    context.lineWidth = data.width;
+    context.fill();
+    context.stroke();
+  }
+};
+
+function calculateFitness(imgData) {
+  /* Calcuate the fitness of an individual using Root Mean Square (RMS)*/
+  var sum = 0.0;
+  var fitness_value = 0.0;
+  if (imgData != undefined && artworkData != undefined && imgData.length == artworkData.length) {
+    for (var i = 0; i < pixelCount; i++){
+        difference = imgData[i] - artworkData[i];
+        sum += difference * difference;
+    }
+    var rms = Math.sqrt(sum/pixelCount); //RMS ranges from 0 (identical) to 255 (completely different)
+    fitness_value = 1 - (rms/255);
+  }
+
+  return fitness_value;
 };
 
 /*function selection(population) {
@@ -230,27 +259,6 @@ function RouletteWheelSelection(population) {
   };
   return parents;
 };*/
-
-function crossover(parents) {
-  /* Crossover the selected individuals using the one point crossover*/
-  var offspring = [];
-  var crossover_point = Math.round(Math.random() * num_of_shapes);
-  console.log(crossover_point);
-  var child1 = new Individual();
-  var child2 = new Individual();
-
-  for (var i = 0; i < crossover_point; i++) {
-    child1.chromosome.push(parents[0].chromosome[i]);
-    child2.chromosome.push(parents[1].chromosome[i]);
-  };
-  for (var i = crossover_point; i < num_of_shapes; i++) {
-    child1.chromosome.push(parents[1].chromosome[i]);
-    child2.chromosome.push(parents[0].chromosome[i]);
-  }
-  offspring.push(child1);
-  offspring.push(child2);
-  return offspring;
-};
 
 function mutation(offspring) {
   /* Mutate the offspring with some probability */
