@@ -57,6 +57,18 @@
       $(".btn-group .btn").removeClass("active");
       $(this).addClass("active");
     });
+
+    $('#evolve').on('click', function() {
+      if ($(this).html() == "Evolve") {
+        $(this).html("Stop");
+        $(this).toggleClass('btn-dark btn-danger');
+        $(this).attr("onclick","pause()");
+      } else {
+        $(this).html("Evolve");
+        $(this).toggleClass('btn-danger btn-dark');
+        $(this).attr("onclick","start()");
+      };
+    });
   });
 </script>
 </body>

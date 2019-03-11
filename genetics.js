@@ -10,13 +10,14 @@ var pixelCount;
 /* GA parameters */
 var population_size;
 var shapes;
-var generation_count = 0;
+var generation_count;
 var elitism = true;
 var crossover_rate = 0.5
 var mutation_rate = 0.8;
 
 /* TESTING */
 var iPopulation;
+var requestID; //for animation
 
 function start() {
   artwork = document.getElementById("artwork");
@@ -34,15 +35,21 @@ function start() {
 
   minRadius = 10;
   maxRadius = 90;
+
   population_size = 10;
   shapes = 50;
+  generation_count = 0;
+
+  requestID = undefined;
+  console.log("Should be undefined: " + requestID);
 
   iPopulation = new Population(population_size);
   iPopulation.generatePopulation();
   iPopulation.drawFittest();
   console.log(iPopulation);
-
-  window.requestAnimationFrame(simulation);
+  if (!requestID) {
+    requestID = window.requestAnimationFrame(simulation);
+  };
 
   /*while(generation_count < 10) {
     window.requestAnimationFrame(simulation);
@@ -53,6 +60,13 @@ function start() {
   });*/
 };
 
+function pause() {
+  if (requestID) {
+    window.cancelAnimationFrame(requestID);
+    requestID = undefined;
+  };
+};
+
 function simulation() {
   generation_count++;
   console.log("Generation: " + generation_count + " Fittest: " + iPopulation.getFittest().fitness_score);
@@ -60,7 +74,7 @@ function simulation() {
   iPopulation.drawFittest();
   console.log(iPopulation);
   if (generation_count < 100) {
-    window.requestAnimationFrame(simulation);
+    requestID = window.requestAnimationFrame(simulation);
   };
 };
 
