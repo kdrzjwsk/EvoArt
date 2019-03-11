@@ -1,4 +1,4 @@
-/* Image and canvas parameters */
+/* Image, canvas & drawing parameters */
 var canvas;
 var ctx;
 var minRadius;
@@ -13,13 +13,14 @@ var shapes;
 var generation_count;
 var elitism = true;
 var crossover_rate = 0.5
-var mutation_rate = 0.8;
+var mutation_rate = 0.15;
 
 /* TESTING */
 var iPopulation;
 var requestID; //for animation
 
 function start() {
+  /* Get original image parameters */
   artwork = document.getElementById("artwork");
   var artwork_canvas = document.createElement("canvas");
   var artwork_ctx = artwork_canvas.getContext("2d");
@@ -28,20 +29,21 @@ function start() {
   artwork_ctx.drawImage(artwork, 0, 0, artwork.width, artwork.height);
   artworkData = artwork_ctx.getImageData(0, 0, artwork_canvas.width, artwork_canvas.height).data;
   pixelCount = artworkData.length;
-  //console.log(artworkData);
 
   canvas = document.getElementById("replica");
   ctx = canvas.getContext("2d");
 
+  /* Drawing parameters */
   minRadius = 10;
   maxRadius = 90;
 
+  /* GA parameters */
   population_size = 10;
-  shapes = 50;
+  shapes = 100;
   generation_count = 0;
 
+  /* Animation parameter */
   requestID = undefined;
-  console.log("Should be undefined: " + requestID);
 
   iPopulation = new Population(population_size);
   iPopulation.generatePopulation();
@@ -73,7 +75,7 @@ function simulation() {
   iPopulation = evolvePopulation(iPopulation);
   iPopulation.drawFittest();
   console.log(iPopulation);
-  if (generation_count < 200) {
+  if (iPopulation.getFittest().fitness_score < 0.5) {
     requestID = window.requestAnimationFrame(simulation);
   };
 };
@@ -114,7 +116,7 @@ function evolvePopulation(population) {
   for (var i = 0; i < newPopulation.size; i++) {
     if (Math.random() < mutation_rate) {
       newPopulation.individuals[i].chromosome = mutation(newPopulation.individuals[i].chromosome);
-      console.log("Mutation");
+      //console.log("Mutation");
     };
   };
   return newPopulation;
@@ -159,7 +161,7 @@ function RouletteWheelSelection(population) {
 
 function mutation(chromosome) {
   /* Mutate the chromosome with some probability */
-  var gene_position = Math.round(Math.random()*shapes);
+  var gene_position = Math.round(Math.random()*shapes)-1; //range 0-49
   //console.log(gene_position);
   //console.log(chromosome[gene_position]);
   chromosome[gene_position] = new Shape();
