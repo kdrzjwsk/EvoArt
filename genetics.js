@@ -73,7 +73,7 @@ function simulation() {
   iPopulation = evolvePopulation(iPopulation);
   iPopulation.drawFittest();
   console.log(iPopulation);
-  if (generation_count < 100) {
+  if (generation_count < 200) {
     requestID = window.requestAnimationFrame(simulation);
   };
 };

@@ -30,18 +30,22 @@
     </div>
     <div class="row align-content-center justify-content-center no-gutters">
       <div class="col">
-        <div class="orginal float-xl-right">
-          <img id="artwork" src="starry-night.jpg" width="470px" height="380px" cross-origin="anonymous">
+        <div class="pic">
+          <div class="orginal float-xl-right">
+            <img id="artwork" src="starry-night.jpg" width="470px" height="380px" cross-origin="anonymous">
+          </div>
         </div>
       </div>
       <div class="col">
-        <div class="canvas float-xl-left">
-          <canvas width="470px" height="380px" id="replica"></canvas>
+        <div class="canv">
+          <div class="canvas float-xl-left">
+            <canvas width="470px" height="380px" id="replica"></canvas>
+          </div>
         </div>
       </div>
     </div>
     <div class="row">
-      <div class="col text-center">
+      <div class="col text-center" id="button">
         <button id="evolve" onclick="start()" class="btn btn-dark btn-lg">Evolve</button>
       </div>
     </div>
@@ -49,21 +53,37 @@
 </div>
 <script>
   $(document).ready(function() {
+    var evolution_running;
     $(".btn-group .btn").click(function() {
+      if (evolution_running) {
+        pause();
+        if ($("#evolve").html() != "Evolve") {
+          $("#evolve").html("Evolve");
+          $("#evolve").toggleClass('btn-danger btn-dark');
+          $("#evolve").attr("onclick","start()");
+        };
+      };
       var id = $(this).attr("id");
       var src = id + ".jpg";
       var img = document.getElementById("artwork");
       $(img).attr("src", src);
       $(".btn-group .btn").removeClass("active");
       $(this).addClass("active");
+
+      var canvas = document.getElementById("replica");
+      var context = canvas.getContext("2d");
+      context.fillStyle = "#C7D4D8";
+      context.clearRect(0, 0, canvas.width, canvas.height);
     });
 
     $('#evolve').on('click', function() {
       if ($(this).html() == "Evolve") {
+        evolution_running = true;
         $(this).html("Stop");
         $(this).toggleClass('btn-dark btn-danger');
         $(this).attr("onclick","pause()");
       } else {
+        evolution_running = false;
         $(this).html("Evolve");
         $(this).toggleClass('btn-danger btn-dark');
         $(this).attr("onclick","start()");
