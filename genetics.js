@@ -11,9 +11,11 @@ var pixelCount;
 var population_size;
 var shapes;
 var generation_count;
-var elitism = true;
-var crossover_rate = 0.5
-var mutation_rate = 0.15;
+var elitism = false;
+var crossover_rate = 0.2;
+var mutation_rate = 0.01;
+var uniform_rate = 0.5;
+var mutation_amount = 0.1;
 
 /* TESTING */
 var iPopulation;
@@ -49,10 +51,11 @@ function start() {
   iPopulation.generatePopulation();
   iPopulation.drawFittest();
   console.log(iPopulation);
+  iPopulation.getStats();
+
   if (!requestID) {
     requestID = window.requestAnimationFrame(simulation);
   };
-
   /*while(generation_count < 10) {
     window.requestAnimationFrame(simulation);
   };*/
@@ -66,33 +69,50 @@ function pause() {
   if (requestID) {
     window.cancelAnimationFrame(requestID);
     requestID = undefined;
+    console.log("Generation #" + generation_count);
+    iPopulation.getStats();
+    console.log(iPopulation);
   };
 };
 
 function simulation() {
   generation_count++;
-  console.log("Generation: " + generation_count + " Fittest: " + iPopulation.getFittest().fitness_score);
+  //console.log("Generation: " + generation_count + " Fittest: " + iPopulation.getFittest().fitness_score);
   iPopulation = evolvePopulation(iPopulation);
   iPopulation.drawFittest();
-  console.log(iPopulation);
-  if (iPopulation.getFittest().fitness_score < 0.5) {
+  //console.log(iPopulation);
+  if (generation_count < 1000) {
     requestID = window.requestAnimationFrame(simulation);
+    console.log("Generation #" + generation_count);
+    iPopulation.getStats();
+    console.log(iPopulation);
+  } else {
+    console.log("Generation #" + generation_count);
+    iPopulation.getStats();
+    console.log(iPopulation);
   };
 };
 
 function randomRGBA() {
   /* Return a random RGBA data */
-  var red = Math.floor(Math.random() * 256);
-  var blue = Math.floor(Math.random() * 256);
-  var green = Math.floor(Math.random() * 256);
-  var opacity = Math.random() * (0.8 - 0.5) + 0.5;
-  return("rgba(" + red + ", " + blue + ", " + green + ", " + opacity + ")");
+  var rgba = [];
+  rgba.push(Math.floor(Math.random() * 256)); //Red
+  rgba.push(Math.floor(Math.random() * 256)); //Green
+  rgba.push(Math.floor(Math.random() * 256)); //Blue
+  rgba.push(Math.random() * (0.8 - 0.2) + 0.2); //Alpha
+  return rgba;
+  //return("rgba(" + red + ", " + blue + ", " + green + ", " + opacity + ")");
 };
 
 function evolvePopulation(population) {
   var new_individuals = []
   var rws = new RouletteWheelSelection(population);
+  var sorted_individuals = population.individuals.sort(function(a, b) {
+    return a.fitness_score - b.fitness_score;
+  }).slice();
+  //console.log(sorted_individuals);
 
+  /* Copy the fittest individual */
   if (elitism) {
     new_individuals.push(population.getFittest());
   };
@@ -100,42 +120,89 @@ function evolvePopulation(population) {
   var elitism_offset;
   if (elitism) {
     elitism_offset = 1;
+    sorted_individuals.pop();
   } else {
     elitism_offset = 0;
   };
 
   /* Select parents and breed the new individuals of the population */
   for (var i = elitism_offset; i < population.size; i++) {
-    var parents = rws.getParents();
-    new_individuals.push(new Individual(parents));
+    if (Math.random() < crossover_rate) {
+      var parents = rws.getParents();
+      new_individuals.push(new Individual(parents));
+    } else {
+      // Generate a random individual
+      //new_individuals.push(new Individual());
+      //console.log(sorted_individuals);
+      var last = sorted_individuals[sorted_individuals.length - 1];
+      new_individuals.push(last);
+      //console.log(last);
+      sorted_individuals.pop();
+      //console.log(sorted_individuals);
+      //console.log("org: " + population.individuals);
+    };
   };
 
   /* Create a new population consisting of the new individuals */
   var newPopulation = new Population(population.size, new_individuals);
 
+  /* Regular Mutation
   for (var i = 0; i < newPopulation.size; i++) {
     if (Math.random() < mutation_rate) {
       newPopulation.individuals[i].chromosome = mutation(newPopulation.individuals[i].chromosome);
       //console.log("Mutation");
     };
+  };*/
+
+  /* Intergenic Mutation */
+  for (var i = 0; i < newPopulation.size; i++) {
+    newPopulation.individuals[i].chromosome = customMutation(newPopulation.individuals[i].chromosome);
   };
+
   return newPopulation;
 };
 
 function RouletteWheelSelection(population) {
   /* Create a roulette wheel for a population */
   this.rouletteWheel = [];
-  this.getParents = function() {
-    var parents = [];
-    for (var n = 0; n < 2; n++) {
+
+  /*this.getParent = function() {
+    var parent;
+    while (parent == undefined) {
       var pointer = Math.random();
       for (var i = 0; i < population.size; i++) {
         if (pointer <= this.rouletteWheel[i]) {
-          parents.push(population.individuals[i]);
-          break;
+          if (population.individuals[i] != population.getFittest()) {
+            parent = population.individuals[i];
+            break;
+          } else {
+            pointer = Math.random();
+            break;
+          };
         };
       };
     };
+    return parent;
+  };*/
+
+  this.getParents = function() {
+    var parents = [];
+    while (parents.length < 2) {
+      var pointer = Math.random();
+      for (var i = 0; i < population.size; i++) {
+        if (pointer <= this.rouletteWheel[i]) {
+          if (!parents.includes(population.individuals[i])) {
+            parents.push(population.individuals[i]);
+            //console.log("Pointer @ " + pointer + " Parent @ " + i);
+            break;
+          } else {
+            pointer = Math.random();
+            break;
+          };
+        };
+      };
+    };
+    //console.log(parents);
     return parents;
   };
 
@@ -157,10 +224,11 @@ function RouletteWheelSelection(population) {
     sum += probabilities_of_selection[i];
     this.rouletteWheel.push(sum);
   };
+  //console.log(this.rouletteWheel);
 };
 
 function mutation(chromosome) {
-  /* Mutate the chromosome with some probability */
+  /* Mutate the chromosome by swapping a random gene with a new gene */
   var gene_position = Math.round(Math.random()*shapes)-1; //range 0-49
   //console.log(gene_position);
   //console.log(chromosome[gene_position]);
@@ -169,12 +237,49 @@ function mutation(chromosome) {
   return chromosome;
 };
 
-function Population (population_size, new_individuals) {
+function intergenicMutation(chromosome) {
+  /* Mutate the chromosome with some probability */
+  for (var i = 0; i < chromosome.length; i++) {
+    if (Math.random() < mutation_rate) {
+      chromosome[i] = new Shape();
+    };
+  };
+  return chromosome;
+};
+
+function customMutation(chromosome) {
+  /* Mutate the chromosome by adjusting some of the values */
+  for (var i = 0; i < chromosome.length; i++) {
+    var colour = chromosome[i].gene[8];
+    if (Math.random() < mutation_rate) {
+      for (var colour_idx = 0; colour_idx < 3; colour_idx++) {
+        var index = Math.floor(Math.random() * 8);
+        chromosome[i].gene[index] += (Math.random() * mutation_amount * 2) - mutation_amount;
+        if (chromosome[i].gene[index] < 0) {
+          chromosome[i].gene[index] = 0;
+        } else if (chromosome[i].gene[index] > 1) {
+          chromosome[i].gene[index] = 1;
+        };
+        colour[colour_idx] += (Math.random() * mutation_amount*255*2) - mutation_amount*255;
+        if (colour[colour_idx] < 0) {
+          colour[colour_idx] = 0;
+        } else if (colour[colour_idx] > 255) {
+          colour[colour_idx] = 255;
+        };
+      };
+      //var colour_idx = Math.floor(Math.random() * 3);
+    };
+  };
+  return chromosome;
+};
+
+function Population(population_size, new_individuals) {
   this.size = population_size;
   this.individuals = new_individuals || [];
   this.generatePopulation = generatePopulation;
   this.drawFittest = drawFittest;
   this.getFittest = getFittest;
+  this.getStats = getStats;
 };
 
 function generatePopulation() {
@@ -195,9 +300,18 @@ function drawFittest() {
 function getFittest() {
   /* Return the fittest individual of the population */
   var max_fittness_score = Math.max.apply(Math, this.individuals.map(function(obj) {return obj.fitness_score;}));
+  //var min_fittness_score = Math.min.apply(Math, this.individuals.map(function(obj) {return obj.fitness_score;}));
   var fittest_individual = this.individuals.find(function(obj) {return obj.fitness_score == max_fittness_score;});
   //console.log("Max: ", max_fittness_score);
+  //console.log("Min: ", min_fittness_score);
   return fittest_individual;
+};
+
+function getStats() {
+  var max_fittness_score = Math.max.apply(Math, this.individuals.map(function(obj) {return obj.fitness_score;}));
+  var min_fittness_score = Math.min.apply(Math, this.individuals.map(function(obj) {return obj.fitness_score;}));
+  console.log("Max: ", max_fittness_score);
+  console.log("Min: ", min_fittness_score);
 };
 
 function Individual(parents) {
@@ -209,9 +323,9 @@ function Individual(parents) {
   this.draw = draw;
   this.fitness_score = 0;
   if (parents && parents.length == 2) {
-    // Crossover using uniform crossover method
+    // Crossover using uniform crossover method with crossover_rate = 0.5
     for (var i = 0; i < this.number_of_shapes; i++) {
-      if (Math.random() <= crossover_rate) {
+      if (Math.random() <= uniform_rate) {
         this.chromosome.push(parents[0].chromosome[i]);
       } else {
         this.chromosome.push(parents[1].chromosome[i]);
@@ -237,14 +351,21 @@ function draw(context) {
   for (var i = 0; i < this.number_of_shapes; i++) {
     var data = this.chromosome[i].gene;
     context.beginPath();
-    context.ellipse(data.x, data.y, data.radiusX, data.radiusY, data.rotation, data.startAngle, data.endAngle, data.cc);
+    context.ellipse(data[0] * canvas.width,
+      data[1] * canvas.height,
+      data[2] * (maxRadius - minRadius) + minRadius,
+      data[3] * (maxRadius - minRadius) + minRadius,
+      data[4] * Math.PI,
+      data[5] * Math.PI,
+      (data[6] + 1) * Math.PI,
+      (data[7] >= 0.5));
     context.closePath();
-    context.fillStyle = data.colour;
-    context.strokeStyle = data.strokeColour;
-    context.lineWidth = data.width;
+    context.fillStyle = "rgba(" + data[8][0] + ", " + data[8][1] + ", " + data[8][2] + ", " + data[8][3] + ")";
+    //context.strokeStyle = data.strokeColour;
+    //context.lineWidth = data.width;
     context.fill();
-    context.stroke();
-  }
+    //context.stroke();
+  };
 };
 
 function calculateFitness(imgData) {
@@ -252,20 +373,31 @@ function calculateFitness(imgData) {
   var sum = 0.0;
   var fitness_value = 0.0;
   if (imgData != undefined && artworkData != undefined && imgData.length == artworkData.length) {
-    for (var i = 0; i < pixelCount; i++){
-        difference = imgData[i] - artworkData[i];
+    for (var i = 0; i < pixelCount; i++) {
+        difference = artworkData[i] - imgData[i];
         sum += difference * difference;
-    }
+    };
     var rms = Math.sqrt(sum/pixelCount); //RMS ranges from 0 (identical) to 255 (completely different)
     fitness_value = 1 - (rms/255);
-  }
+  };
 
   return fitness_value;
 };
 
 function Shape () {
-  this.gene = {};
+  this.gene = [];
 
+  this.gene[0] = Math.random(); //x
+  this.gene[1] = Math.random(); //y
+  this.gene[2] = Math.random(); //radiusX
+  this.gene[3] = Math.random(); //radiusY
+  this.gene[4] = Math.random(); //startAngle
+  this.gene[5]= Math.random(); //endAngle
+  this.gene[6] = Math.random(); //rotation
+  this.gene[7] = Math.random(); //counter-clockwise
+  this.gene[8] = randomRGBA(); //colour
+
+  /*
   this.gene.x = Math.random()*canvas.width;
   this.gene.y = Math.random()*canvas.height;
   this.gene.radiusX = Math.random()*(maxRadius - minRadius) + minRadius;
@@ -276,5 +408,5 @@ function Shape () {
   this.gene.cc = (Math.random() >= 0.5);
   this.gene.colour = randomRGBA();
   this.gene.strokeColour = randomRGBA();
-  this.gene.width = Math.floor(Math.random()* 10);
+  this.gene.width = Math.floor(Math.random()*10);*/
 };
