@@ -11,8 +11,8 @@ var pixelCount;
 var population_size;
 var shapes;
 var generation_count;
-var elitism = false;
-var crossover_rate = 0.2;
+var elitism = true;
+var crossover_rate = 0.8;
 var mutation_rate = 0.01;
 var uniform_rate = 0.5;
 var mutation_amount = 0.1;
@@ -41,7 +41,7 @@ function start() {
 
   /* GA parameters */
   population_size = 10;
-  shapes = 100;
+  shapes = 150;
   generation_count = 0;
 
   /* Animation parameter */
@@ -54,19 +54,14 @@ function start() {
   iPopulation.getStats();
 
   if (!requestID) {
+    /* Start evolution animation */
     requestID = window.requestAnimationFrame(simulation);
   };
-  /*while(generation_count < 10) {
-    window.requestAnimationFrame(simulation);
-  };*/
-
-  /*window.addEventListener('click', function() {
-    setTimeout(simulation(iPopulation), 1000);
-  });*/
 };
 
 function pause() {
   if (requestID) {
+    /* Stop evolution animation */
     window.cancelAnimationFrame(requestID);
     requestID = undefined;
     console.log("Generation #" + generation_count);
@@ -77,10 +72,9 @@ function pause() {
 
 function simulation() {
   generation_count++;
-  //console.log("Generation: " + generation_count + " Fittest: " + iPopulation.getFittest().fitness_score);
   iPopulation = evolvePopulation(iPopulation);
   iPopulation.drawFittest();
-  //console.log(iPopulation);
+
   if (generation_count < 1000) {
     requestID = window.requestAnimationFrame(simulation);
     console.log("Generation #" + generation_count);
@@ -157,6 +151,8 @@ function evolvePopulation(population) {
   /* Intergenic Mutation */
   for (var i = 0; i < newPopulation.size; i++) {
     newPopulation.individuals[i].chromosome = customMutation(newPopulation.individuals[i].chromosome);
+    newPopulation.individuals[i].imgData = createImageData(newPopulation.individuals[i]);
+    newPopulation.individuals[i].fitness_score = calculateFitness(newPopulation.individuals[i]);
   };
 
   return newPopulation;
@@ -319,7 +315,7 @@ function Individual(parents) {
   Its chromosome stores the data about all shapes. Each shape is a gene. */
   this.chromosome = [];
   this.number_of_shapes = shapes;
-  this.imgData;
+  this.imgData = [];
   this.draw = draw;
   this.fitness_score = 0;
   if (parents && parents.length == 2) {
@@ -337,11 +333,12 @@ function Individual(parents) {
         this.chromosome.push(new Shape());
     };
   };
-  var individual_canvas = document.createElement("canvas");
+  /*var individual_canvas = document.createElement("canvas");
   var individual_ctx = individual_canvas.getContext("2d");
   this.draw(individual_ctx);
-  this.imgData = individual_ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-  this.fitness_score = calculateFitness(this.imgData);
+  this.imgData = individual_ctx.getImageData(0, 0, canvas.width, canvas.height).data;*/
+  this.imgData = createImageData(this);
+  this.fitness_score = calculateFitness(this);
 };
 
 function draw(context) {
@@ -368,8 +365,16 @@ function draw(context) {
   };
 };
 
-function calculateFitness(imgData) {
+function createImageData(individual) {
+  var individual_canvas = document.createElement("canvas");
+  var individual_ctx = individual_canvas.getContext("2d");
+  individual.draw(individual_ctx);
+  return individual_ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+};
+
+function calculateFitness(individual) {
   /* Calcuate the fitness of an individual using Root Mean Square (RMS)*/
+  var imgData = individual.imgData;
   var sum = 0.0;
   var fitness_value = 0.0;
   if (imgData != undefined && artworkData != undefined && imgData.length == artworkData.length) {
