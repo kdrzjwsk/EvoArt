@@ -1,3 +1,5 @@
+"use strict";
+
 /* Image, canvas & drawing parameters */
 var canvas;
 var ctx;
@@ -12,10 +14,11 @@ var population_size;
 var shapes;
 var generation_count;
 var elitism = true;
-var crossover_rate = 0.8;
-var mutation_rate = 0.01;
+var crossover_rate = 0.75;
+var mutation_rate = 0.05;
 var uniform_rate = 0.5;
 var mutation_amount = 0.1;
+var injection_chance = 0.05;
 
 /* TESTING */
 var iPopulation;
@@ -36,12 +39,12 @@ function start() {
   ctx = canvas.getContext("2d");
 
   /* Drawing parameters */
-  minRadius = 10;
-  maxRadius = 90;
+  minRadius = 50;
+  maxRadius = 150;
 
   /* GA parameters */
   population_size = 10;
-  shapes = 150;
+  shapes = 50;
   generation_count = 0;
 
   /* Animation parameter */
@@ -54,9 +57,38 @@ function start() {
   iPopulation.getStats();
 
   if (!requestID) {
-    /* Start evolution animation */
+    // Start evolution animation
     requestID = window.requestAnimationFrame(simulation);
   };
+
+  /*var test = [];
+  var ind = new Individual();
+  console.log(ind);
+  test.push(ind);
+  var ind2 = new Individual();
+  console.log(ind2);
+  test.push(ind2);
+  var ind3 = new Individual(test);
+  console.log(ind3);
+  //test.push(ind3);
+  //console.log(test);
+  //ind.fitness_score = 50;
+  //console.log(ind3);
+  //console.log(ind);
+  var test2 = []*/
+  /*var ind4 = new Individual();
+  console.log(ind4);
+  ind4.draw(ctx);
+  ind4.chromosome = customMutation(ind4.chromosome);
+  ind4.imgData = createImageData(ind4);
+  ind4.fitness_score = calculateFitness(ind4);
+  ind4.draw(ctx);
+  console.log(ind4);
+  //test2.push(ind4);*/
+  //test2.push(ind);
+  //var ind5 = new Individual(test2);
+  //console.log(ind5);
+
 };
 
 function pause() {
@@ -75,7 +107,7 @@ function simulation() {
   iPopulation = evolvePopulation(iPopulation);
   iPopulation.drawFittest();
 
-  if (generation_count < 1000) {
+  if (generation_count < 500) {
     requestID = window.requestAnimationFrame(simulation);
     console.log("Generation #" + generation_count);
     iPopulation.getStats();
@@ -98,13 +130,41 @@ function randomRGBA() {
   //return("rgba(" + red + ", " + blue + ", " + green + ", " + opacity + ")");
 };
 
+/*function removeDuplicates(individuals) {
+  var seen_individuals = {};
+  var no_duplicates = [];
+  var removed = 0;
+  for (var i = 0; i < individuals.length; i++) {
+    if (!(individuals[i] in seen_individuals)) {
+      no_duplicates.push(individuals[i]);
+      //console.log(no_duplicates);
+      seen_individuals[individuals[i]] = true;
+    } else {
+      removed += 1;
+      console.log("Removed: " + removed);
+    };
+  };
+  return no_duplicates;
+};*/
+
+function removeDuplicates(individuals) {
+  var obj = {};
+
+  for (var i = 0; i < individuals.length; i++) {
+    obj[individuals[i]['fitness_score']] = individuals[i];
+  };
+  //console.log(obj);
+
+  var no_duplicates = new Array();
+  for (var key in obj) {
+      no_duplicates.push(obj[key]);
+  };
+  return no_duplicates;
+};
+
 function evolvePopulation(population) {
-  var new_individuals = []
+  var new_individuals = [];
   var rws = new RouletteWheelSelection(population);
-  var sorted_individuals = population.individuals.sort(function(a, b) {
-    return a.fitness_score - b.fitness_score;
-  }).slice();
-  //console.log(sorted_individuals);
 
   /* Copy the fittest individual */
   if (elitism) {
@@ -114,46 +174,34 @@ function evolvePopulation(population) {
   var elitism_offset;
   if (elitism) {
     elitism_offset = 1;
-    sorted_individuals.pop();
   } else {
     elitism_offset = 0;
   };
 
   /* Select parents and breed the new individuals of the population */
-  for (var i = elitism_offset; i < population.size; i++) {
+  while(new_individuals.length < population.size) {
     if (Math.random() < crossover_rate) {
+      // Perform crossover
       var parents = rws.getParents();
-      new_individuals.push(new Individual(parents));
+      var child = new Individual(parents);
+      new_individuals.push(child);
+    } else if (Math.random() < injection_chance) {
+      // Inject a random individual to the new population with some small probability to maintain diversity
+      console.log("Injection");
+      new_individuals.push(new Individual());
     } else {
-      // Generate a random individual
-      //new_individuals.push(new Individual());
-      //console.log(sorted_individuals);
-      var last = sorted_individuals[sorted_individuals.length - 1];
-      new_individuals.push(last);
-      //console.log(last);
-      sorted_individuals.pop();
-      //console.log(sorted_individuals);
-      //console.log("org: " + population.individuals);
+      // Select an individual from the current population, mutate it and add it to the new individuals
+      var child = new Individual(rws.getParent().chromosome);
+      new_individuals.push(child);
     };
+    // Remove duplicates to maintain population diversity
+    //console.log(new_individuals);
+    new_individuals = removeDuplicates(new_individuals).slice(0);
+    //console.log(new_individuals);
   };
 
   /* Create a new population consisting of the new individuals */
   var newPopulation = new Population(population.size, new_individuals);
-
-  /* Regular Mutation
-  for (var i = 0; i < newPopulation.size; i++) {
-    if (Math.random() < mutation_rate) {
-      newPopulation.individuals[i].chromosome = mutation(newPopulation.individuals[i].chromosome);
-      //console.log("Mutation");
-    };
-  };*/
-
-  /* Intergenic Mutation */
-  for (var i = 0; i < newPopulation.size; i++) {
-    newPopulation.individuals[i].chromosome = customMutation(newPopulation.individuals[i].chromosome);
-    newPopulation.individuals[i].imgData = createImageData(newPopulation.individuals[i]);
-    newPopulation.individuals[i].fitness_score = calculateFitness(newPopulation.individuals[i]);
-  };
 
   return newPopulation;
 };
@@ -162,24 +210,19 @@ function RouletteWheelSelection(population) {
   /* Create a roulette wheel for a population */
   this.rouletteWheel = [];
 
-  /*this.getParent = function() {
+  this.getParent = function() {
     var parent;
     while (parent == undefined) {
       var pointer = Math.random();
       for (var i = 0; i < population.size; i++) {
         if (pointer <= this.rouletteWheel[i]) {
-          if (population.individuals[i] != population.getFittest()) {
-            parent = population.individuals[i];
-            break;
-          } else {
-            pointer = Math.random();
-            break;
-          };
+          parent = population.individuals[i];
+          break;
         };
       };
     };
     return parent;
-  };*/
+  };
 
   this.getParents = function() {
     var parents = [];
@@ -243,11 +286,14 @@ function intergenicMutation(chromosome) {
   return chromosome;
 };
 
-function customMutation(chromosome) {
+function customMutation(oldChromosome) {
   /* Mutate the chromosome by adjusting some of the values */
+  //console.log(oldChromosome);
+  var chromosome = oldChromosome.slice(0);
   for (var i = 0; i < chromosome.length; i++) {
-    var colour = chromosome[i].gene[8];
+    var colour = chromosome[i].gene[8].slice(0);
     if (Math.random() < mutation_rate) {
+      console.log("Mutating");
       for (var colour_idx = 0; colour_idx < 3; colour_idx++) {
         var index = Math.floor(Math.random() * 8);
         chromosome[i].gene[index] += (Math.random() * mutation_amount * 2) - mutation_amount;
@@ -263,25 +309,30 @@ function customMutation(chromosome) {
           colour[colour_idx] = 255;
         };
       };
-      //var colour_idx = Math.floor(Math.random() * 3);
     };
+    chromosome[i].gene[8] = colour.slice(0);
   };
+  //console.log(chromosome);
   return chromosome;
 };
 
 function Population(population_size, new_individuals) {
   this.size = population_size;
-  this.individuals = new_individuals || [];
+  this.individuals = [];
   this.generatePopulation = generatePopulation;
   this.drawFittest = drawFittest;
   this.getFittest = getFittest;
   this.getStats = getStats;
+
+  if (new_individuals !== undefined && new_individuals.length === population_size) {
+    this.individuals = new_individuals.slice(0);
+  };
 };
 
 function generatePopulation() {
   /* Initialise the population by creating a number of new random individuals */
 
-  if (this.individuals === undefined || this.individuals.length == 0) {
+  if (this.individuals === undefined || this.individuals.length === 0) {
     for (var i = 0; i < this.size; i++) {
       this.individuals.push(new Individual());
     };
@@ -298,8 +349,7 @@ function getFittest() {
   var max_fittness_score = Math.max.apply(Math, this.individuals.map(function(obj) {return obj.fitness_score;}));
   //var min_fittness_score = Math.min.apply(Math, this.individuals.map(function(obj) {return obj.fitness_score;}));
   var fittest_individual = this.individuals.find(function(obj) {return obj.fitness_score == max_fittness_score;});
-  //console.log("Max: ", max_fittness_score);
-  //console.log("Min: ", min_fittness_score);
+  console.log(fittest_individual);
   return fittest_individual;
 };
 
@@ -310,7 +360,7 @@ function getStats() {
   console.log("Min: ", min_fittness_score);
 };
 
-function Individual(parents) {
+function Individual(parents, chromosome) {
   /* An individual of the population is a representation of a collection of shapes
   Its chromosome stores the data about all shapes. Each shape is a gene. */
   this.chromosome = [];
@@ -318,7 +368,8 @@ function Individual(parents) {
   this.imgData = [];
   this.draw = draw;
   this.fitness_score = 0;
-  if (parents && parents.length == 2) {
+
+  if (parents && parents.length === 2) {
     // Crossover using uniform crossover method with crossover_rate = 0.5
     for (var i = 0; i < this.number_of_shapes; i++) {
       if (Math.random() <= uniform_rate) {
@@ -327,23 +378,35 @@ function Individual(parents) {
         this.chromosome.push(parents[1].chromosome[i]);
       };
     };
+
+    // Mutate
+    this.chromosome = customMutation(this.chromosome).slice(0);
+
+  } else if (chromosome && chromosome.length === this.number_of_shapes) {
+    // Create an individual from an array of shapes (chromosome)
+      for (var i = 0; i < this.number_of_shapes; i++) {
+        this.chromosome.push(chromosome[i]);
+      };
+
+    // Mutate
+    this.chromosome = customMutation(this.chromosome).slice(0);
+
   } else {
     // Random generation
     for (var i = 0; i < this.number_of_shapes; i++) {
         this.chromosome.push(new Shape());
     };
   };
-  /*var individual_canvas = document.createElement("canvas");
-  var individual_ctx = individual_canvas.getContext("2d");
-  this.draw(individual_ctx);
-  this.imgData = individual_ctx.getImageData(0, 0, canvas.width, canvas.height).data;*/
+
+  // Calculate the fitness_score of the individual
   this.imgData = createImageData(this);
   this.fitness_score = calculateFitness(this);
+  //console.log(this.fitness_score);
 };
 
 function draw(context) {
-  /* Draw an individual using its chromosome data */
-  context.fillStyle = "#C7D4D8";
+  /* Draw an individual using its chromosome data "#C7D4D8"*/
+  context.fillStyle = "#000";
   context.clearRect(0, 0, canvas.width, canvas.height);
   for (var i = 0; i < this.number_of_shapes; i++) {
     var data = this.chromosome[i].gene;
@@ -377,9 +440,9 @@ function calculateFitness(individual) {
   var imgData = individual.imgData;
   var sum = 0.0;
   var fitness_value = 0.0;
-  if (imgData != undefined && artworkData != undefined && imgData.length == artworkData.length) {
+  if (imgData !== undefined && artworkData !== undefined && imgData.length === artworkData.length) {
     for (var i = 0; i < pixelCount; i++) {
-        difference = artworkData[i] - imgData[i];
+        var difference = artworkData[i] - imgData[i];
         sum += difference * difference;
     };
     var rms = Math.sqrt(sum/pixelCount); //RMS ranges from 0 (identical) to 255 (completely different)
@@ -389,7 +452,19 @@ function calculateFitness(individual) {
   return fitness_value;
 };
 
-function Shape () {
+/*function copyChromosome(individual) {
+ var new_individual = new Individual();
+ var new_chromosome = [];
+ for (var i = 0; i < individual.number_of_shapes; i++) {
+   new_chromosome.push(individual.chromosome[i]);
+ };
+ new_individual.chromosome = new_chromosome.slice();
+ new_individual.imgData = createImageData(new_individual);
+ new_individual.fitness_score = calculateFitness(new_individual);
+ return new_individual;
+};*/
+
+function Shape() {
   this.gene = [];
 
   this.gene[0] = Math.random(); //x
