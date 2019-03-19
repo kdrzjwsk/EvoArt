@@ -8,15 +8,13 @@ var maxRadius;
 var artwork;
 var artworkData;
 var pixelCount;
-/*var test_canvas;
-var test_ctx;*/
 
 /* GA parameters */
 var population_size;
 var shapes;
 var generation_count;
 var elitism = true;
-var crossover_rate = 0.85;
+var crossover_rate = 0.75;
 var mutation_rate = 0.15;
 var uniform_rate = 0.5;
 var mutation_amount = 0.1;
@@ -46,12 +44,12 @@ function start() {
   test_ctx = test_canvas.getContext("2d");*/
 
   /* Drawing parameters */
-  minRadius = 100;
-  maxRadius = 300;
+  minRadius = 20;
+  maxRadius = 200;
 
   /* GA parameters */
   population_size = 10;
-  shapes = 10;
+  shapes = 200;
   generation_count = 0;
 
   /* Animation parameter */
@@ -68,24 +66,6 @@ function start() {
     requestID = window.requestAnimationFrame(simulation);
   };
 
-  /*var test = iPopulation.individuals.slice();
-  console.log(test);*/
-
-  /*var newPop = new Population(iPopulation.size, test);
-  var rws = new RouletteWheelSelection(iPopulation);
-  var rws2 = new RouletteWheelSelection(newPop);
-  console.log(rws.getParent());
-  console.log(rws2.getParent());
-  console.log(rws.getParents());
-  console.log(rws2.getParents());*/
-
-
-  /*var test = new Individual();
-  var chrom1 = test.chromosome.slice(0);
-  console.log("Pierwszy test", chrom1);
-  console.log(test.chromosome);
-  var chrom2 = customMutation(test.chromosome).slice(0);
-  console.log("Test", chrom2);*/
 };
 
 function pause() {
@@ -173,49 +153,42 @@ function intergenicMutation(chromosome) {
   return chromosome;
 };
 
-function customMutation(oldChromosome) {
-  /* Mutate the chromosome by adjusting some of the values */
-  //console.log(oldChromosome);
-  var chromosome = oldChromosome.slice(0);
-  //console.log("Old", oldChromosome);
-  for (var i = 0; i < chromosome.length; i++) {
-    var colour = chromosome[i].gene[8].slice(0);
-    //console.log("Old colour", colour);
+function customMutation(old_chromosome) {
+  /* Mutate the chromosome by adjusting some of the values and RGB colour*/
+
+  // Copy chromosome
+  var new_chromosome = [];
+  for (var n = 0; n < old_chromosome.length; n++) {
+    new_chromosome.push(new Shape(old_chromosome[n].gene.slice(0)));
+  };
+
+  for (var i = 0; i < new_chromosome.length; i++) {
     if (Math.random() < mutation_rate) {
-      //console.log("Mutating");
       //console.log("DNA #", i);
-      for (var colour_idx = 0; colour_idx < 3; colour_idx++) {
+
+      // Mutate random 3 values from the gene and RGB colours
+      for (var idx = 0; idx < 3; idx++) {
+        // Mutate gene values from indices 0-8
         var index = Math.floor(Math.random() * 8);
-        chromosome[i].gene[index] += (Math.random() * mutation_amount * 2) - mutation_amount;
-        if (chromosome[i].gene[index] < 0) {
-          chromosome[i].gene[index] = 0;
-        } else if (chromosome[i].gene[index] > 1) {
-          chromosome[i].gene[index] = 1;
+        new_chromosome[i].gene[index] += (Math.random() * mutation_amount * 2) - mutation_amount;
+
+        if (new_chromosome[i].gene[index] < 0) {
+          new_chromosome[i].gene[index] = 0;
+        } else if (new_chromosome[i].gene[index] > 1) {
+          new_chromosome[i].gene[index] = 1;
         };
-        colour[colour_idx] += Math.floor((Math.random() * mutation_amount * 255 * 2) - mutation_amount * 255);
-        if (colour[colour_idx] < 0) {
-          colour[colour_idx] = 0;
-        } else if (colour[colour_idx] > 255) {
-          colour[colour_idx] = 255;
+
+        // Mutate RGB colour = indices 8-10
+        new_chromosome[i].gene[8 + idx] += Math.floor((Math.random() * mutation_amount * 255 * 2) - mutation_amount * 255);
+        if (new_chromosome[i].gene[8 + idx] < 0) {
+          new_chromosome[i].gene[8 + idx] = 0;
+        } else if (new_chromosome[i].gene[8 + idx] > 255) {
+          new_chromosome[i].gene[8 + idx] = 255;
         };
-      };
-      colour[3] += (Math.random() * mutation_amount * 2) - mutation_amount;
-      if (colour[3] < 0) {
-        colour[3] = 0;
-      } else if (colour[3] > 1) {
-        colour[3] = 1;
       };
     };
-    /*console.log("After mutation");
-    console.log("New colour", colour);
-    chromosome[i].gene[8] = colour.slice(0);
-    colour[3] = 55;
-    console.log("Po zmianie colour", colour);
-    console.log("Roboczy", chromosome[i].gene[8]);
-    console.log(oldChromosome);*/
   };
-  //console.log(chromosome);
-  return chromosome;
+  return new_chromosome;
 };
 
 /* Selection */
@@ -348,13 +321,6 @@ function getStatistics() {
   //average time for improvement
 };
 
-function getWorst() {
-  var min_fittness_score = Math.min.apply(Math, this.individuals.map(function(obj) {return obj.fitness_score;}));
-  var worst_individual = this.individuals.find(function(obj) {return obj.fitness_score == min_fittness_score;});
-
-  return worst_individual;
-};
-
 /* Individual */
 
 function Individual(parents, chromosome) {
@@ -363,8 +329,8 @@ function Individual(parents, chromosome) {
   this.chromosome = [];
   this.number_of_shapes = shapes;
   this.imgData = [];
-  this.draw = draw;
   this.fitness_score = 0;
+  this.draw = draw;
   this.createImageData = createImageData;
   this.calculateFitness = calculateFitness;
 
@@ -400,7 +366,6 @@ function Individual(parents, chromosome) {
   // Calculate the fitness_score of the individual
   this.imgData = this.createImageData();
   this.fitness_score = this.calculateFitness();
-  //console.log(this.fitness_score);
 };
 
 function draw(context) {
@@ -419,7 +384,7 @@ function draw(context) {
       (data[6] + 1) * Math.PI,
       (data[7] >= 0.5));
     context.closePath();
-    context.fillStyle = "rgba(" + data[8][0] + ", " + data[8][1] + ", " + data[8][2] + ", " + data[8][3] + ")";
+    context.fillStyle = "rgba(" + data[8] + ", " + data[9] + ", " + data[10] + ", " + data[11] + ")";
     //context.strokeStyle = data.strokeColour;
     //context.lineWidth = data.width;
     context.fill();
@@ -453,19 +418,32 @@ function calculateFitness() {
 
 /* Shape */
 
-function Shape() {
+function Shape(gene) {
   this.gene = [];
 
-  this.gene[0] = Math.random(); //x
-  this.gene[1] = Math.random(); //y
-  this.gene[2] = Math.random(); //radiusX
-  this.gene[3] = Math.random(); //radiusY
-  this.gene[4] = Math.random(); //startAngle
-  this.gene[5]= Math.random(); //endAngle
-  this.gene[6] = Math.random(); //rotation
-  this.gene[7] = Math.random(); //counter-clockwise
-  this.gene[8] = randomRGBA().slice(0); //colour
+  if (gene && gene.length === 12) {
+    //Copy gene
+    for (var i = 0; i < gene.length; i++) {
+      this.gene.push(gene[i]);
+    };
+  } else {
+    var rgba = randomRGBA().slice(0);
 
+    this.gene[0] = Math.random();   //x
+    this.gene[1] = Math.random();   //y
+    this.gene[2] = Math.random();   //radiusX
+    this.gene[3] = Math.random();   //radiusY
+    this.gene[4] = Math.random();   //startAngle
+    this.gene[5]= Math.random();    //endAngle
+    this.gene[6] = Math.random();   //rotation
+    this.gene[7] = Math.random();   //counter-clockwise
+    this.gene[8] = rgba[0];         //red
+    this.gene[9] = rgba[1];         //green
+    this.gene[10] = rgba[2];        //blue
+    this.gene[11] = rgba[3];        //aplha
+  };
+
+  //console.log(this.gene);
   /*
   this.gene.x = Math.random()*canvas.width;
   this.gene.y = Math.random()*canvas.height;
