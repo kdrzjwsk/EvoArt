@@ -11,14 +11,15 @@ var pixelCount;
 
 /* GA parameters */
 var population_size;
-var shapes;
 var generation_count;
 var elitism = true;
-var crossover_rate = 0.75;
-var mutation_rate = 0.15;
+var crossover_rate = 0.6;
+var mutation_rate = 0.09;
 var uniform_rate = 0.5;
-var mutation_amount = 0.1;
-var injection_chance = 0.05;
+var mutation_amount = 0.2;
+var injection_chance = 0.01;
+var chromosome_length;
+var gene_length;
 
 /* TESTING */
 var iPopulation;
@@ -40,17 +41,15 @@ function start() {
   canvas = document.getElementById("replica");
   ctx = canvas.getContext("2d");
 
-  /*test_canvas = document.getElementById("test");
-  test_ctx = test_canvas.getContext("2d");*/
-
   /* Drawing parameters */
-  minRadius = 20;
-  maxRadius = 200;
+  minRadius = 10;
+  maxRadius = 100;
 
   /* GA parameters */
-  population_size = 10;
-  shapes = 200;
+  population_size = 50;
   generation_count = 0;
+  chromosome_length = 150; //number of shapes
+  gene_length = 12;
 
   /* Animation parameter */
   requestID = undefined;
@@ -84,7 +83,7 @@ function simulation() {
   iPopulation = evolvePopulation(iPopulation);
   iPopulation.drawFittest();
 
-  if (generation_count < 2000) {
+  if (generation_count < 1000) {
     requestID = window.requestAnimationFrame(simulation);
     console.log("Generation #" + generation_count);
     iPopulation.getStatistics();
@@ -158,7 +157,8 @@ function customMutation(old_chromosome) {
 
   // Copy chromosome
   var new_chromosome = [];
-  for (var n = 0; n < old_chromosome.length; n++) {
+  for (var n = 0; n < old_chromosome
+    ; n++) {
     new_chromosome.push(new Shape(old_chromosome[n].gene.slice(0)));
   };
 
@@ -184,6 +184,32 @@ function customMutation(old_chromosome) {
           new_chromosome[i].gene[8 + idx] = 0;
         } else if (new_chromosome[i].gene[8 + idx] > 255) {
           new_chromosome[i].gene[8 + idx] = 255;
+        };
+      };
+    };
+  };
+  return new_chromosome;
+};
+
+function newMutation(old_chromosome) {
+  /* Mutate the chromosome by adjusting the alleles */
+
+  // Copy chromosome
+  var new_chromosome = [];
+  for (var n = 0; n < chromosome_length; n++) {
+    new_chromosome.push(new Shape(old_chromosome[n].gene.slice(0)));
+  };
+
+  for (var i = 0; i < chromosome_length; i++) {
+    if (Math.random() < mutation_rate) {
+      for (var idx = 0; idx < gene_length; idx++) {
+        // Mutate gene at index
+        new_chromosome[i].gene[idx] += (Math.random() * mutation_amount * 2) - mutation_amount;
+
+        if (new_chromosome[i].gene[idx] < 0) {
+          new_chromosome[i].gene[idx] = 0;
+        } else if (new_chromosome[i].gene[idx] > 1) {
+          new_chromosome[i].gene[idx] = 1;
         };
       };
     };
@@ -240,13 +266,13 @@ function RouletteWheelSelection(population) {
 
   //Calculate the probability of selection for each individual from the formula prob = fitness_of_individual/total_fitness
   var probabilities_of_selection = [];
-  for (var i = 0; i < population.size; i++) {
+  for (var i = 0; i < population_size; i++) {
     probabilities_of_selection.push(population.individuals[i].fitness_score/total_fitness);
   };
 
   //Calculate probability intervals for the idividuals
   var sum = 0;
-  for (var i = 0; i < probabilities_of_selection.length; i++) {
+  for (var i = 0; i < population_size; i++) {
     sum += probabilities_of_selection[i];
     this.rouletteWheel.push(sum);
   };
@@ -312,13 +338,21 @@ function getFittest() {
 };
 
 function getStatistics() {
+  // Calculate average fitness score
+  var avg_fitness_score = 0;
+  for (var i = 0; i < this.size; i++) {
+    avg_fitness_score += this.individuals[i].fitness_score;
+  };
+
+  avg_fitness_score = avg_fitness_score/this.size;
+
+  //var avg_fitness_score = this.individuals.reduce(function(prev, curr) {return prev.fitness_score + curr.fitness_score}, 0);
+  // Find max & min fitness score
   var max_fittness_score = Math.max.apply(Math, this.individuals.map(function(obj) {return obj.fitness_score;}));
   var min_fittness_score = Math.min.apply(Math, this.individuals.map(function(obj) {return obj.fitness_score;}));
   console.log("Max: ", max_fittness_score);
   console.log("Min: ", min_fittness_score);
-
-  //average fitness_score
-  //average time for improvement
+  console.log("Avg: ", avg_fitness_score);
 };
 
 /* Individual */
@@ -327,7 +361,7 @@ function Individual(parents, chromosome) {
   /* An individual of the population is a representation of a collection of shapes
   Its chromosome stores the data about all shapes. Each shape is a gene. */
   this.chromosome = [];
-  this.number_of_shapes = shapes;
+  this.number_of_shapes = chromosome_length;
   this.imgData = [];
   this.fitness_score = 0;
   this.draw = draw;
@@ -345,7 +379,7 @@ function Individual(parents, chromosome) {
     };
 
     // Mutate
-    this.chromosome = customMutation(this.chromosome).slice(0);
+    this.chromosome = newMutation(this.chromosome).slice(0);
 
   } else if (chromosome && chromosome.length === this.number_of_shapes) {
     // Create an individual from an array of shapes (chromosome)
@@ -354,7 +388,7 @@ function Individual(parents, chromosome) {
       };
 
     // Mutate
-    this.chromosome = customMutation(this.chromosome).slice(0);
+    this.chromosome = newMutation(this.chromosome).slice(0);
 
   } else {
     // Random generation
@@ -369,8 +403,8 @@ function Individual(parents, chromosome) {
 };
 
 function draw(context) {
-  /* Draw an individual using its chromosome data "#C7D4D8"*/
-  //context.fillStyle = "#C7D4D8";
+  /* Draw an individual using its chromosome data */
+  context.fillStyle = "#C7D4D8";
   context.clearRect(0, 0, canvas.width, canvas.height);
   for (var i = 0; i < this.number_of_shapes; i++) {
     var data = this.chromosome[i].gene;
@@ -384,7 +418,7 @@ function draw(context) {
       (data[6] + 1) * Math.PI,
       (data[7] >= 0.5));
     context.closePath();
-    context.fillStyle = "rgba(" + data[8] + ", " + data[9] + ", " + data[10] + ", " + data[11] + ")";
+    context.fillStyle = "rgba(" + Math.floor(data[8] * 256) + ", " + Math.floor(data[9] * 256) + ", " + Math.floor(data[10] * 256) + ", " + (data[11] * (0.8 - 0.2) + 0.2) + ")";
     //context.strokeStyle = data.strokeColour;
     //context.lineWidth = data.width;
     context.fill();
@@ -401,12 +435,12 @@ function createImageData() {
 
 function calculateFitness() {
   /* Calcuate the fitness of an individual using Root Mean Square (RMS)*/
-  var imgData = this.imgData;
+  //var imgData = this.imgData;
   var sum = 0.0;
   var fitness_value = 0.0;
-  if (imgData !== undefined && artworkData !== undefined && imgData.length === artworkData.length) {
+  if (this.imgData !== undefined && artworkData !== undefined && this.imgData.length === artworkData.length) {
     for (var i = 0; i < pixelCount; i++) {
-        var difference = artworkData[i] - imgData[i];
+        var difference = artworkData[i] - this.imgData[i];
         sum += difference * difference;
     };
     var rms = Math.sqrt(sum/pixelCount); //RMS ranges from 0 (identical) to 255 (completely different)
@@ -423,12 +457,11 @@ function Shape(gene) {
 
   if (gene && gene.length === 12) {
     //Copy gene
-    for (var i = 0; i < gene.length; i++) {
+    for (var i = 0; i < gene_length; i++) {
       this.gene.push(gene[i]);
     };
   } else {
-    var rgba = randomRGBA().slice(0);
-
+    // Generate a new random gene
     this.gene[0] = Math.random();   //x
     this.gene[1] = Math.random();   //y
     this.gene[2] = Math.random();   //radiusX
@@ -437,13 +470,11 @@ function Shape(gene) {
     this.gene[5]= Math.random();    //endAngle
     this.gene[6] = Math.random();   //rotation
     this.gene[7] = Math.random();   //counter-clockwise
-    this.gene[8] = rgba[0];         //red
-    this.gene[9] = rgba[1];         //green
-    this.gene[10] = rgba[2];        //blue
-    this.gene[11] = rgba[3];        //aplha
+    this.gene[8] = Math.random()    //red
+    this.gene[9] = Math.random();   //green
+    this.gene[10] = Math.random();  //blue
+    this.gene[11] = Math.random();  //alpha
   };
-
-  //console.log(this.gene);
   /*
   this.gene.x = Math.random()*canvas.width;
   this.gene.y = Math.random()*canvas.height;

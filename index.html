@@ -25,8 +25,9 @@
         <button type="button" class="btn btn-secondary active" id="starry-night">Starry Night</button>
         <button type="button" class="btn btn-secondary" id="irises">Irises</button>
         <button type="button" class="btn btn-secondary" id="wheat-field">Wheat Field</button>
-        <button type="button" class="btn btn-secondary" id="dish-of-apples">Dish of Apples</button>
+        <button type="button" class="btn btn-info" id="upload-image">Upload Image</button>
       </div>
+      <input type="file" id="img-upload" onchange="displayImage(this);" style="display:none"/>
     </div>
     <div class="row align-content-center justify-content-center no-gutters">
       <div class="col">
@@ -49,18 +50,12 @@
         <button id="evolve" onclick="start()" class="btn btn-dark btn-lg">Evolve</button>
       </div>
     </div>
-    <!--<div class="row">
-      <div class="canv">
-        <div class="canvas float-xl-left">
-          <canvas width="470px" height="380px" id="test"></canvas>
-        </div>
-      </div>
-    </div>-->
   </div>
 </div>
 <script>
   $(document).ready(function() {
     var evolution_running;
+    var drop_zone;
     $(".btn-group .btn").click(function() {
       if (evolution_running) {
         pause();
@@ -71,11 +66,18 @@
         };
       };
       var id = $(this).attr("id");
-      var src = id + ".jpg";
-      var img = document.getElementById("artwork");
-      $(img).attr("src", src);
-      $(".btn-group .btn").removeClass("active");
-      $(this).addClass("active");
+      if (id === "upload-image") {
+        $(this).click(function(){ $('#img-upload').trigger('click');});
+        $(".btn-group .btn").removeClass("active");
+        $(this).addClass("active");
+      } else {
+        var src = id + ".jpg";
+        var img = document.getElementById("artwork");
+        $(img).attr("src", src);
+        $(img).attr("style", "display:block");
+        $(".btn-group .btn").removeClass("active");
+        $(this).addClass("active");
+      };
 
       var canvas = document.getElementById("replica");
       var context = canvas.getContext("2d");
@@ -97,6 +99,42 @@
       };
     });
   });
+
+  function displayImage(input) {
+    if (input.files && input.files[0]) {
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        $('#artwork').attr('src', e.target.result);
+      };
+      reader.readAsDataURL(input.files[0]);
+    };
+  };
+
+  /*function displayImagePreview(input) { //image preview after select image
+  if (input.files && input.files[0]) {
+    var filerdr = new FileReader();
+
+    filerdr.onload = function(e) {
+      var img = new Image();
+
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var ctx = canvas.getContext('2d');
+        canvas.width = 470;
+        canvas.height = 380; //canvas.width * (img.height / img.width);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // SEND THIS DATA TO WHEREVER YOU NEED IT
+        var data = canvas.toDataURL('image/png');
+
+        //$('#artwork').attr('src', img.src);
+        $('#artwork').attr('src', data);//converted image in variable 'data'
+      }
+      img.src = e.target.result;
+    }
+    filerdr.readAsDataURL(input.files[0]);
+  }
+}*/
 </script>
 </body>
 </html>
