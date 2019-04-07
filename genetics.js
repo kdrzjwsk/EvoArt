@@ -37,19 +37,21 @@ function start() {
   artwork_canvas.height = artwork.height;
   artwork_ctx.drawImage(artwork, 0, 0, artwork.width, artwork.height);
   artworkData = artwork_ctx.getImageData(0, 0, artwork_canvas.width, artwork_canvas.height).data;
+  //console.log(artworkData);
   pixelCount = artworkData.length;
 
+  //console.log(pixelCount);
   canvas = document.getElementById("replica");
   ctx = canvas.getContext("2d");
 
   /* Drawing parameters */
-  minRadius = 50;
-  maxRadius = 100;
+  minRadius = 20; //50
+  maxRadius = 100; //100?
 
   /* GA parameters */
   population_size = 50;
   generation_count = 0;
-  chromosome_length = 150; //number of shapes
+  chromosome_length = 200; //number of shapes
   gene_length = 12;
 
   /* Animation parameter */
@@ -84,7 +86,7 @@ function simulation() {
   myPopulation = evolvePopulation(myPopulation);
   myPopulation.drawFittest();
 
-  if (myPopulation.getFittest().fitness_score < 0.5) {
+  if (myPopulation.getFittest().fitness_score < 1) {
     requestID = window.requestAnimationFrame(simulation);
     console.log("Generation #" + generation_count);
     myPopulation.getStatistics();
@@ -133,8 +135,8 @@ function evolvePopulation(population) {
       new_individuals.push(child);
     };
     // Remove duplicates to maintain population diversity every 50 generations
-    if (generation_count % 50 === 0) {
-      new_individuals = removeDuplicates(new_individuals).slice(0);
+    if (generation_count % 10 === 0) {
+      new_individuals = removeDuplicates(new_individuals);
     };
   };
 
@@ -168,7 +170,7 @@ function newMutation(old_chromosome) {
   for (let i = 0; i < chromosome_length; i++) {
     if (Math.random() < mutation_rate) {
       for (let idx = 0; idx < gene_length; idx++) {
-        // Mutate gene at index
+        // Mutate the gene at index
         new_chromosome[i].gene[idx] += (Math.random() * mutation_amount * 2) - mutation_amount;
 
         if (new_chromosome[i].gene[idx] < 0) {
@@ -361,7 +363,7 @@ function getStatistics() {
 
 function Individual(parents) {
   /* An individual of the population is a representation of a collection of shapes
-  Its chromosome stores the data about all shapes. Each shape is a gene. */
+  Its chromosome stores the data about all shapes. Each shape has a gene. */
   this.chromosome = [];
   this.number_of_shapes = chromosome_length;
   this.imgData = [];
@@ -426,8 +428,8 @@ function draw(context) {
       (data[7] >= 0.5));
     context.closePath();
     context.fillStyle = "rgba(" + Math.floor(data[8] * 256) + ", " + Math.floor(data[9] * 256) + ", " + Math.floor(data[10] * 256) + ", " + (data[11] * (0.8 - 0.2) + 0.2) + ")";
-    //context.strokeStyle = data.strokeColour;
-    //context.lineWidth = data.width;
+    //context.strokeStyle = "rgba(" + Math.floor(data[13] * 256) + ", " + Math.floor(data[14] * 256) + ", " + Math.floor(data[15] * 256) + ", " + (data[16] * 0.5) + ")";
+    //context.lineWidth = Math.floor(data[12]*10);
     context.fill();
     //context.stroke();
   };
@@ -435,8 +437,11 @@ function draw(context) {
 
 function createImageData() {
   var individual_canvas = document.createElement("canvas");
+  individual_canvas.width = artwork.width;
+  individual_canvas.height = artwork.height;
   var individual_ctx = individual_canvas.getContext("2d");
   this.draw(individual_ctx);
+  //console.log(individual_ctx.getImageData(0, 0, canvas.width, canvas.height).data);
   return individual_ctx.getImageData(0, 0, canvas.width, canvas.height).data;
 };
 
@@ -451,7 +456,8 @@ function calculateFitness() {
         sum += difference * difference;
     };
     var rms = Math.sqrt(sum/pixelCount); //RMS ranges from 0 (identical) to 255 (completely different)
-    fitness_value = 1 - (rms/255);
+    //var mse = sum/(pixelCount * 255 * 255);
+    fitness_value = 1 - rms/255;
   };
 
   return fitness_value;
@@ -462,7 +468,7 @@ function calculateFitness() {
 function Shape(gene) {
   this.gene = [];
 
-  if (gene && gene.length === 12) {
+  if (gene && gene.length === gene_length) {
     //Copy gene
     for (let i = 0; i < gene_length; i++) {
       this.gene.push(gene[i]);
@@ -481,6 +487,11 @@ function Shape(gene) {
     this.gene[9] = Math.random();   //green
     this.gene[10] = Math.random();  //blue
     this.gene[11] = Math.random();  //alpha
+    /*this.gene[12] = Math.random();  //stroke width
+    this.gene[13] = Math.random();  //red - stroke
+    this.gene[14] = Math.random();  //green - stroke
+    this.gene[15] = Math.random();  //blue - stroke
+    this.gene[16] = Math.random();  //alpha - stroke*/
   };
   /*
   this.gene.x = Math.random()*canvas.width;
