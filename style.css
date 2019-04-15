@@ -53,6 +53,15 @@ html, body, header {
   padding: 20px;
 }
 
+#evo-report-button {
+  text-decoration: none;
+  color: black;
+  font-weight: bold;
+}
+
+.table-sm td, .table-sm th {
+    padding: .5rem !important;
+}
 
 @media screen and (max-width: 1280px) {
   img {

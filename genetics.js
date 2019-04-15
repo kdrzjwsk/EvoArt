@@ -22,13 +22,40 @@ var selection_pressure = 0.15;
 var chromosome_length;
 var gene_length;
 
-/* TESTING */
 var myPopulation;
-var requestID; //for animation
+
+/* Animation */
+var requestID;
+
+/* Statistics & Analytics */
+var max_fitness_score;
+var avg_fitness_score;
+var min_fitness_score;
+var generationCountID;
+var maxID;
+var avgID;
+var minID;
+var time;
+
+/* Timing */
+var startTime;
+var endTime;
+var clock_running = false;
+var clock_paused = false;
+var timeInterval;
+var difference;
+var updatedTime;
+var savedTime;
 
 /* Web App */
 
 function start() {
+  generationCountID = document.getElementById("generation");
+  maxID = document.getElementById("maxfitness");
+  avgID = document.getElementById("avgfitness");
+  minID = document.getElementById("minfitness");
+  time = document.getElementById("time");
+
   /* Get original image parameters */
   artwork = document.getElementById("artwork");
   var artwork_canvas = document.createElement("canvas");
@@ -37,10 +64,8 @@ function start() {
   artwork_canvas.height = artwork.height;
   artwork_ctx.drawImage(artwork, 0, 0, artwork.width, artwork.height);
   artworkData = artwork_ctx.getImageData(0, 0, artwork_canvas.width, artwork_canvas.height).data;
-  //console.log(artworkData);
   pixelCount = artworkData.length;
 
-  //console.log(pixelCount);
   canvas = document.getElementById("replica");
   ctx = canvas.getContext("2d");
 
@@ -56,6 +81,7 @@ function start() {
 
   /* Animation parameter */
   requestID = undefined;
+  resetTimer();
 
   myPopulation = new Population(population_size);
   myPopulation.generatePopulation();
@@ -65,20 +91,53 @@ function start() {
 
   if (!requestID) {
     // Start evolution animation
+    startTimer();
     requestID = window.requestAnimationFrame(simulation);
   };
 
 };
 
-function pause() {
+function stop() {
   if (requestID) {
     /* Stop evolution animation */
     window.cancelAnimationFrame(requestID);
     requestID = undefined;
-    console.log("Generation #" + generation_count);
-    myPopulation.getStatistics();
-    console.log(myPopulation);
+    pauseTimer();
   };
+};
+
+function startTimer() {
+  startTime = new Date().getTime();
+  timeInterval = setInterval(showTime, 1000);
+};
+
+function pauseTimer(){
+  clearInterval(timeInterval);
+  savedTime = difference;
+  };
+
+function resetTimer(){
+  clearInterval(timeInterval);
+  savedTime = 0;
+  difference = 0;
+};
+
+function showTime(){
+  updatedTime = new Date().getTime();
+  if (savedTime){
+    difference = (updatedTime - startTime) + savedTime;
+  } else {
+    difference =  updatedTime - startTime;
+  };
+  var hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  var minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+  var seconds = Math.floor((difference % (1000 * 60)) / 1000);
+  var milliseconds = Math.floor((difference % (1000 * 60)) / 100);
+  hours = (hours < 10) ? "0" + hours : hours;
+  minutes = (minutes < 10) ? "0" + minutes : minutes;
+  seconds = (seconds < 10) ? "0" + seconds : seconds;
+  //milliseconds = (milliseconds < 100) ? (milliseconds < 10) ? "00" + milliseconds : "0" + milliseconds : milliseconds;
+  time.innerHTML = hours + ':' + minutes + ':' + seconds;
 };
 
 function simulation() {
@@ -88,13 +147,17 @@ function simulation() {
 
   if (myPopulation.getFittest().fitness_score < 1) {
     requestID = window.requestAnimationFrame(simulation);
-    console.log("Generation #" + generation_count);
     myPopulation.getStatistics();
-    //console.log(iPopulation);
+    generationCountID.innerHTML = generation_count;
+    maxID.innerHTML = Math.round(max_fitness_score * 100000)/100000;
+    avgID.innerHTML = Math.round(avg_fitness_score * 100000)/100000;
+    minID.innerHTML = Math.round(min_fitness_score * 100000)/100000;
   } else {
-    console.log("Generation #" + generation_count);
     myPopulation.getStatistics();
-    console.log(myPopulation);
+    generationCountID.innerHTML = generation_count;
+    maxID.innerHTML = Math.round(max_fitness_score * 100000)/100000;
+    avgID.innerHTML = Math.round(avg_fitness_score * 100000)/100000;
+    minID.innerHTML = Math.round(min_fitness_score * 100000)/100000;
   };
 };
 
@@ -334,7 +397,7 @@ function drawFittest() {
 
 function getFittest() {
   /* Return the fittest individual of the population */
-  var max_fitness_score = Math.max.apply(Math, this.individuals.map(function(obj) {return obj.fitness_score;}));
+  max_fitness_score = Math.max.apply(Math, this.individuals.map(function(obj) {return obj.fitness_score;}));
   //console.log(max_fitness_score);
   var fittest_individual = this.individuals.find(function(obj) {return obj.fitness_score == max_fitness_score;});
   //console.log(fittest_individual);
@@ -343,7 +406,7 @@ function getFittest() {
 
 function getStatistics() {
   // Calculate average fitness score
-  var avg_fitness_score = 0;
+  avg_fitness_score = 0;
   for (let i = 0; i < this.size; i++) {
     avg_fitness_score += this.individuals[i].fitness_score;
   };
@@ -352,11 +415,11 @@ function getStatistics() {
 
   //var avg_fitness_score = this.individuals.reduce(function(prev, curr) {return prev.fitness_score + curr.fitness_score}, 0);
   // Find max & min fitness score
-  var max_fittness_score = Math.max.apply(Math, this.individuals.map(function(obj) {return obj.fitness_score;}));
-  var min_fittness_score = Math.min.apply(Math, this.individuals.map(function(obj) {return obj.fitness_score;}));
-  console.log("Max: ", max_fittness_score);
+  //max_fitness_score = Math.max.apply(Math, this.individuals.map(function(obj) {return obj.fitness_score;}));
+  min_fitness_score = Math.min.apply(Math, this.individuals.map(function(obj) {return obj.fitness_score;}));
+  /*console.log("Max: ", max_fittness_score);
   console.log("Min: ", min_fittness_score);
-  console.log("Avg: ", avg_fitness_score);
+  console.log("Avg: ", avg_fitness_score);*/
 };
 
 /* Individual */

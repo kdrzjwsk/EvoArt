@@ -48,18 +48,61 @@
     </div>
     <div class="row">
       <div class="col text-center" id="button">
-        <button id="evolve" onclick="start()" class="btn btn-dark btn-lg">Evolve</button>
+        <button id="evolve" onclick="startEvolution()" class="btn btn-dark btn-lg">Evolve</button>
       </div>
     </div>
   </div>
 </div>
-<script>
+<div class="container-fluid">
+  <div class="container" id="evo-container">
+    <button href="#" data-toggle="collapse" class="btn btn-md show" data-target="#evolution-report" id="evo-report-button">+ Evolution Analytics</button>
+    <div id="evolution-report" class="collapse">
+      <table class="table-sm table-borderless analytics">
+        <tbody>
+          <tr>
+            <td>Time Elapsed</td>
+            <td id="time">00:00:00</td>
+          </tr>
+          <tr>
+            <td>Generation</td>
+            <td id="generation">0</td>
+          </tr>
+          <tr>
+            <td>Maximum Fitness</td>
+            <td id="maxfitness">0</td>
+          </tr>
+          <tr>
+            <td>Average Fitness</td>
+            <td id="avgfitness">0</td>
+          </tr>
+          <tr>
+            <td>Minimum Fitness</td>
+            <td id="minfitness">0</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script type="text/javascript">
+
+  function startEvolution() {
+    $(document).ready(start);
+  };
+
   $(document).ready(function() {
-    var evolution_running;
+    var evolution_running = false;
     var drop_zone;
+    $("#evo-report-button").on('click', function() {
+      if ($(this).html() == "+ Evolution Analytics") {
+        $(this).html("- Evolution Analytics");
+      } else {
+        $(this).html("+ Evolution Analytics");
+      };
+    });
     $(".btn-group .btn").click(function() {
       if (evolution_running) {
-        pause();
+        stop();
         if ($("#evolve").html() != "Evolve") {
           $("#evolve").html("Evolve");
           $("#evolve").toggleClass('btn-danger btn-dark');
@@ -91,7 +134,7 @@
         evolution_running = true;
         $(this).html("Stop");
         $(this).toggleClass('btn-dark btn-danger');
-        $(this).attr("onclick","pause()");
+        $(this).attr("onclick","stop()");
       } else {
         evolution_running = false;
         $(this).html("Evolve");
@@ -99,6 +142,15 @@
         $(this).attr("onclick","start()");
       };
     });
+    /*console.log(evolution_running);
+    while (evolution_running) {
+      console.log("hej");
+      console.log(window.generation_count);
+      $("#generationNO").html(generation_count);
+      $("#maxfitness").html(max_fitness_score);
+      $("#avgfitness").html(avg_fitness_score);
+      $("#minfitness").html(min_fitness_score);
+    };*/
   });
 
   function displayImage(input) {
