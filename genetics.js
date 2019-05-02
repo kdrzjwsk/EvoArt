@@ -18,7 +18,7 @@ var mutation_rate = 0.01;
 var uniform_rate = 0.5;
 var mutation_amount = 0.1;
 var injection_chance = 0.01;
-var selection_pressure = 0.15;
+var selective_pressure = 0.15;
 var chromosome_length;
 var gene_length;
 
@@ -74,7 +74,7 @@ function start() {
   maxRadius = 100; //100?
 
   /* GA parameters */
-  population_size = 50;
+  population_size = 25;
   generation_count = 0;
   chromosome_length = 200; //number of shapes
   gene_length = 12;
@@ -145,7 +145,8 @@ function simulation() {
   myPopulation = evolvePopulation(myPopulation);
   myPopulation.drawFittest();
 
-  if (myPopulation.getFittest().fitness_score < 1) {
+  //myPopulation.getFittest().fitness_score < 1
+  if (generation_count < 4000) {
     requestID = window.requestAnimationFrame(simulation);
     myPopulation.getStatistics();
     generationCountID.innerHTML = generation_count;
@@ -158,6 +159,7 @@ function simulation() {
     maxID.innerHTML = Math.round(max_fitness_score * 100000)/100000;
     avgID.innerHTML = Math.round(avg_fitness_score * 100000)/100000;
     minID.innerHTML = Math.round(min_fitness_score * 100000)/100000;
+    stop();
   };
 };
 
@@ -175,18 +177,12 @@ function evolvePopulation(population) {
     new_individuals.push(population.getFittest());
   };
 
-  /* var elitism_offset;
-  if (elitism) {
-    elitism_offset = 1;
-  } else {
-    elitism_offset = 0;
-  };*/
-
   /* Select parents and breed the new individuals of the population */
   while(new_individuals.length < population.size) {
     if (Math.random() < crossover_rate) {
       // Perform crossover
-      var parents = es.getParents();
+      //var parents = es.getParents();
+      var parents = rws.getParents();
       //console.log(parents);
       new_individuals.push(new Individual(parents));
     } else if (Math.random() < injection_chance) {
@@ -194,11 +190,11 @@ function evolvePopulation(population) {
       new_individuals.push(new Individual());
     } else {
       // Select an individual from the current population, mutate it and add it to the new individuals
-      var child = new Individual(es.getParent());
+      var child = new Individual(rws.getParent());
       new_individuals.push(child);
     };
-    // Remove duplicates to maintain population diversity every 50 generations
-    if (generation_count % 10 === 0) {
+    // Remove duplicates to maintain population diversity every 20 generations
+    if (generation_count % 20 === 0) {
       new_individuals = removeDuplicates(new_individuals);
     };
   };
@@ -222,7 +218,7 @@ function intergenicMutation(chromosome) {
 };
 
 function newMutation(old_chromosome) {
-  /* Mutate the chromosome by adjusting the alleles */
+  /* Mutate the chromosome by adjusting gene values */
 
   // Copy chromosome
   var new_chromosome = [];
@@ -306,7 +302,6 @@ function RouletteWheelSelection(population) {
     sum += probabilities_of_selection[i];
     this.rouletteWheel.push(sum);
   };
-  //console.log(this.rouletteWheel);
 };
 
 function EliteSelection(population) {
@@ -316,12 +311,13 @@ function EliteSelection(population) {
     return b.fitness_score - a.fitness_score;
   }).slice();
 
-  this.cutoff_index = Math.floor(selection_pressure*this.sorted_individuals.length);
+  /* Calculate the number of parents */
+  this.cutoff_index = Math.floor(selective_pressure*this.sorted_individuals.length);
 
+  /* Select n fittest parents (n = this.cutoff_index) */
   for (let i = 0; i < this.cutoff_index; i++) {
     this.fittest_individuals.push(this.sorted_individuals[i]);
   };
-  //console.log(this.fittest_individuals);
 
   this.getParents = function() {
     var parents = [];
@@ -351,15 +347,17 @@ function EliteSelection(population) {
 function removeDuplicates(individuals) {
   var obj = {};
 
+  // Create an object with key-value pairs where key = fitness score and value = a corresponding individual
   for (let i = 0; i < individuals.length; i++) {
     obj[individuals[i]['fitness_score']] = individuals[i];
   };
-  //console.log(obj);
 
   var no_duplicates = [];
   for (var key in obj) {
       no_duplicates.push(obj[key]);
   };
+
+  // Return an array containing no duplicate individuals
   return no_duplicates;
 };
 
@@ -436,15 +434,12 @@ function Individual(parents) {
   this.calculateFitness = calculateFitness;
 
   if (parents && parents.length === 2) {
-    // Crossover using uniform crossover method with crossover_rate = 0.5
-    //console.log("2 parents - testing mutation")
+    // Crossover using uniform crossover method
     for (let i = 0; i < this.number_of_shapes; i++) {
-      if (Math.random() <= uniform_rate) {
+      if (Math.random() <= 0.5) {
         this.chromosome.push(new Shape(parents[0].chromosome[i].gene.slice(0)));
-        //console.log(this.chromosome);
       } else {
         this.chromosome.push(new Shape(parents[1].chromosome[i].gene.slice(0)));
-        //console.log(this.chromosome);
       };
     };
 
@@ -509,7 +504,7 @@ function createImageData() {
 };
 
 function calculateFitness() {
-  /* Calcuate the fitness of an individual using Root Mean Square (RMS)*/
+  /* Calculate the fitness of an individual using Root Mean Square (RMS)*/
   //var imgData = this.imgData;
   var sum = 0.0;
   var fitness_value = 0.0;
